@@ -2,7 +2,6 @@ import os
 import subprocess
 import tempfile
 import shutil
-from datetime import datetime
 from modules.config import config
 from modules.logging_setup import log_function
 

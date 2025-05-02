@@ -7,11 +7,12 @@ import os
 import pandas as pd
 import zipfile
 
-from modules.config_generators import generate_sys_config_table_info
 from modules.logging_setup import log_function
 
 logger = logging.getLogger(__name__)
-SUPPORTED_EXTENSIONS = [".csv", ".xlsx"]
+SUPPORTED_EXTENSIONS = [
+    ".csv", ".xlsx"
+]
 
 
 @log_function
@@ -63,7 +64,9 @@ def process_uploaded_zip(uploaded_zip_file, src_nm, table_nm, generate_sys_confi
                 all_metadata.append(metadata_df)
                 if not metadata_df.empty:
                     temp_table_df = generate_sys_config_table_info_fn(base_filename)
-                    table_info_df = pd.concat([table_info_df, temp_table_df], ignore_index=True)
+                    table_info_df = pd.concat(
+                        [table_info_df, temp_table_df], ignore_index=True
+                    )
             except Exception as e:
                 logger.error(f"Error processing file {base_filename} in zip: {e}")
     all_metadata_df = pd.concat(all_metadata, ignore_index=True) if all_metadata else pd.DataFrame()

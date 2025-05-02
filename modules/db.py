@@ -126,7 +126,9 @@ def check_existence(src_nm: str, dataset_nm: str, src_table_nm: str) -> bool:
             for q, params in queries:
                 cur.execute(q, params)
                 if cur.fetchone():
-                    logger.info(f"Configuration exists for src={src_nm}, dataset={dataset_nm}, table={src_table_nm}")
+                    logger.info(
+                        f"Configuration exists for src={src_nm}, dataset={dataset_nm}, table={src_table_nm}"
+                    )
                     return True
             return False
     except Exception as e:

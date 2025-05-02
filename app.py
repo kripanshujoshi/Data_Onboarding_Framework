@@ -198,11 +198,6 @@ if st.session_state.template_generated:
                     options=dataset_manl_upld_flg,
                     required=True,
                 ),
-                # 'whse_load_enbl_flg': st.column_config.SelectboxColumn(
-                #     'whse_load_enbl_flg',
-                #     options=dataset_whse_load_enbl_flg,
-                #     required=True,
-                # )
             },
             on_change=update_dataset_info,
         )

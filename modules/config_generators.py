@@ -23,7 +23,9 @@ def generate_sys_config_dataset_info(src_nm, dataset_nm, dialect, warehouse_nm):
     """
     Generate sys_config_dataset_info dataframe.
     """
-    logger.debug(f"Generating sys_config_dataset_info for src={src_nm}, dataset={dataset_nm}")
+    logger.debug(
+        f"Generating sys_config_dataset_info for src={src_nm}, dataset={dataset_nm}"
+    )
     table_conf = _get_table_conf("sys_config_dataset_info")
     row = dict(table_conf.get("defaults", {}))
     row.update({
@@ -40,7 +42,9 @@ def generate_sys_config_pre_proc_info(src_nm, dataset_nm, fmt_type_cd):
     """
     Generate sys_config_pre_proc_info dataframe.
     """
-    logger.debug(f"Generating sys_config_pre_proc_info for src={src_nm}, dataset={dataset_nm}")
+    logger.debug(
+        f"Generating sys_config_pre_proc_info for src={src_nm}, dataset={dataset_nm}"
+    )
     table_conf = _get_table_conf("sys_config_pre_proc_info")
     row = dict(table_conf.get("defaults", {}))
     row.update({
@@ -59,7 +63,8 @@ def generate_sys_config_table_info(
     Generate sys_config_table_info dataframe.
     """
     logger.debug(
-        f"Generating sys_config_table_info for src={src_nm}, domain={domn_nm}, dataset={dataset_nm}, table={table_nm}"
+        f"Generating sys_config_table_info for src={src_nm}, domain={domn_nm}, "
+        f"dataset={dataset_nm}, table={table_nm}"
     )
     name_without_ext = os.path.splitext(table_nm)[0].strip()
     table_conf = _get_table_conf("sys_config_table_info")

@@ -4,7 +4,7 @@ Business logic for Data Onboarding Framework: template generation, SQL script ge
 import os
 import pandas as pd
 from datetime import datetime
-from modules import metadata, sql_generator
+from modules import metadata
 from modules.config_generators import generate_sys_config_dataset_info, generate_sys_config_pre_proc_info, generate_sys_config_table_info
 from modules.logging_setup import log_function
 

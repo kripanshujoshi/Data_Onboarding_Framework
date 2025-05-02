@@ -57,7 +57,9 @@ def extract_metadata_from_dataframe(df, src_nm, table_nm):
 @log_function
 def extract_metadata_from_excel(xls, src_nm, table_nm):
     """Extract metadata from first sheet of Excel file."""
-    logger.debug(f"Extracting metadata from Excel for src={src_nm}, table={table_nm}")
+    logger.debug(
+        f"Extracting metadata from Excel for src={src_nm}, table={table_nm}"
+    )
     sheet_name = xls.sheet_names[0]  # Use first sheet
     df = xls.parse(sheet_name, dtype=str)
     if df.empty:
@@ -83,7 +85,9 @@ def extract_from_uploaded_file(uploaded_file, src_nm, table_nm, generate_sys_con
             metadata_df = extract_metadata_from_dataframe(df, src_nm, table_nm)
             table_info_df = generate_sys_config_table_info_fn(filename)
         elif ext == ".zip":
-            metadata_df, table_info_df = process_uploaded_zip(uploaded_file, src_nm, table_nm, generate_sys_config_table_info_fn)
+            metadata_df, table_info_df = process_uploaded_zip(
+                uploaded_file, src_nm, table_nm, generate_sys_config_table_info_fn
+            )
         else:
             raise ValueError("Unsupported file type.")
         return metadata_df, table_info_df
