@@ -1,7 +1,9 @@
 import pandas as pd
 from modules import db
 import streamlit as st
+from modules.logging_setup import log_function
 
+@log_function
 def infer_snowflake_type(col_data: pd.Series) -> str:
     if col_data.empty:
         return "VARCHAR(255)"
@@ -14,6 +16,7 @@ def infer_snowflake_type(col_data: pd.Series) -> str:
         pass
     return "VARCHAR(255)"
 
+@log_function
 def generate_create_table_script(metadata_df: pd.DataFrame, schema_name: str, src_nm: str, dataset_nm: str) -> str:
     if metadata_df.empty:
         return "No metadata available to generate SQL."
@@ -31,6 +34,7 @@ def generate_create_table_script(metadata_df: pd.DataFrame, schema_name: str, sr
     )
     return sql_script
 
+@log_function
 def create_insert_statement(table_name: str, df: pd.DataFrame) -> str:
     if df.empty:
         return f"-- No data to insert into {table_name}"
@@ -41,6 +45,7 @@ def create_insert_statement(table_name: str, df: pd.DataFrame) -> str:
     )
     return f"INSERT INTO {table_name} ({columns}) VALUES\n{values};"
 
+@log_function
 def create_update_statement(table_name: str, df: pd.DataFrame, where_keys: list) -> str:
     if df.empty:
         return f"-- No data to update in {table_name}"
@@ -61,6 +66,7 @@ def create_update_statement(table_name: str, df: pd.DataFrame, where_keys: list)
         update_queries.append(query)
     return "\n".join(update_queries)
 
+@log_function
 def generate_insert_statements(src_nm, dataset_nm, table_nm, df_dataset_info, df_pre_proc_info, df_table_info, df_metadata_df) -> str:
     insert_statements = []
     update_statements = []

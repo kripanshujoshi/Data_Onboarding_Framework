@@ -1,6 +1,7 @@
 import json
 import logging
 from modules.config import config
+from modules.logging_setup import log_function
 import boto3
 import psycopg2
 import pandas as pd
@@ -17,6 +18,7 @@ DBNAME = DB_CONFIG.get('dbname')
 PORT = DB_CONFIG.get('port')
 
 
+@log_function
 def get_db_credentials() -> dict:
     """
     Retrieve database credentials from AWS Secrets Manager.
@@ -34,6 +36,7 @@ def get_db_credentials() -> dict:
         raise Exception(f"Error fetching secrets: {e}")
 
 
+@log_function
 def check_db_connection() -> psycopg2.extensions.connection:
     """
     Establish and return a new database connection.
@@ -54,6 +57,7 @@ def check_db_connection() -> psycopg2.extensions.connection:
         raise Exception(f"Failed to connect to database: {e}")
 
 
+@log_function
 def fetch_dataframe(query: str, params=None) -> pd.DataFrame:
     """
     Execute a SELECT query and return results as a pandas DataFrame.
@@ -73,14 +77,11 @@ def fetch_dataframe(query: str, params=None) -> pd.DataFrame:
         conn.close()
 
 
+@log_function
 def insert_statements_into_postgres(sql_script: str) -> bool:
     """
     Execute DDL/DML SQL script against the database.
     """
-    conn = check_db_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(sql_script)
             conn.commit()
             logger.info("SQL script executed successfully.")
             return True

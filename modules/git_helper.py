@@ -4,7 +4,9 @@ import tempfile
 import shutil
 from datetime import datetime
 from modules.config import config
+from modules.logging_setup import log_function
 
+@log_function
 def git_push_files_to_feature_branch(files, branch_name, folder):
     temp_repo_dir = None
     try:

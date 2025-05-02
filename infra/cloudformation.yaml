@@ -75,6 +75,9 @@ Resources:
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: IamInstanceProfile
           Value: !Ref InstanceProfile
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: LOG_FILE
+          Value: /var/log/app.log
 
 Outputs:
   EnvURL:
