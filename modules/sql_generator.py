@@ -38,9 +38,8 @@ def generate_create_table_script(
         columns_sql.append(col_def)
 
     sql_script = (
-        f"CREATE TABLE {schema_name}.{src_nm}_{dataset_nm}_{table_name} (\n" +
-        ",\n".join(columns_sql) +
-        "\n);"
+        f"CREATE TABLE {schema_name}.{src_nm}_{dataset_nm}_{table_name} (\n"
+        f"{',\n'.join(columns_sql)}\n);"
     )
     return sql_script
 

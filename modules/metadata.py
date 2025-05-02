@@ -78,15 +78,24 @@ def extract_from_uploaded_file(uploaded_file, src_nm, table_nm, generate_sys_con
     try:
         if ext == ".csv":
             df = read_csv(uploaded_file)
-            metadata_df = extract_metadata_from_dataframe(df, src_nm, table_nm)
-            table_info_df = generate_sys_config_table_info_fn(filename)
+            metadata_df = extract_metadata_from_dataframe(
+                df, src_nm, table_nm
+            )
+            table_info_df = generate_sys_config_table_info_fn(
+                filename
+            )
         elif ext == ".xlsx":
             df = read_excel(uploaded_file)
-            metadata_df = extract_metadata_from_dataframe(df, src_nm, table_nm)
-            table_info_df = generate_sys_config_table_info_fn(filename)
+            metadata_df = extract_metadata_from_dataframe(
+                df, src_nm, table_nm
+            )
+            table_info_df = generate_sys_config_table_info_fn(
+                filename
+            )
         elif ext == ".zip":
             metadata_df, table_info_df = process_uploaded_zip(
-                uploaded_file, src_nm, table_nm, generate_sys_config_table_info_fn
+                uploaded_file, src_nm, table_nm,
+                generate_sys_config_table_info_fn
             )
         else:
             raise ValueError("Unsupported file type.")

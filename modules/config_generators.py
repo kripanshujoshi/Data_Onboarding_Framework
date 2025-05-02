@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 Functions to generate system configuration dataframes for dataset, pre-processing, and table information.
 """
 
+
 @log_function
 def _get_table_conf(table_name):
     for tbl in config["tables"]:
