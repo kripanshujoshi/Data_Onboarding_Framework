@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 from modules.metadata import extract_metadata_from_dataframe
 
 

@@ -1,6 +1,6 @@
-import pandas as pd
-import os
 import logging
+import os
+import pandas as pd
 from .config import config
 from modules.logging_setup import log_function
 
@@ -17,6 +17,7 @@ def _get_table_conf(table_name):
             return tbl
     raise ValueError(f"Table config not found for {table_name}")
 
+
 @log_function
 def generate_sys_config_dataset_info(src_nm, dataset_nm, dialect, warehouse_nm):
     """
@@ -32,6 +33,7 @@ def generate_sys_config_dataset_info(src_nm, dataset_nm, dialect, warehouse_nm):
         "cmput_whse_nm": warehouse_nm
     })
     return pd.DataFrame([row], columns=table_conf["columns"])
+
 
 @log_function
 def generate_sys_config_pre_proc_info(src_nm, dataset_nm, fmt_type_cd):

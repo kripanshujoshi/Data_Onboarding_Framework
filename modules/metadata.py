@@ -1,16 +1,18 @@
+import logging
 import os
 import pandas as pd
-import logging
-from modules.sql_generator import infer_snowflake_type
 from modules.logging_setup import log_function
+from modules.sql_generator import infer_snowflake_type
 
 logger = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = [".csv", ".xlsx"]
 
+
 """
 Metadata extraction utilities for Data Onboarding Framework.
 """
+
 
 @log_function
 def extract_metadata_from_dataframe(df, src_nm, table_nm):
@@ -49,6 +51,7 @@ def extract_metadata_from_dataframe(df, src_nm, table_nm):
         })
     return pd.DataFrame(extracted_data)
 
+
 @log_function
 def extract_metadata_from_excel(xls, src_nm, table_nm):
     """Extract metadata from first sheet of Excel file."""
@@ -59,6 +62,7 @@ def extract_metadata_from_excel(xls, src_nm, table_nm):
         return pd.DataFrame()
     df.columns = df.columns.str.strip()
     return extract_metadata_from_dataframe(df, src_nm, table_nm)
+
 
 @log_function
 def extract_from_uploaded_file(uploaded_file, src_nm, table_nm, generate_sys_config_table_info_fn):

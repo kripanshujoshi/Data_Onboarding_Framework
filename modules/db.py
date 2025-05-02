@@ -1,11 +1,11 @@
 import json
 import logging
-from modules.config import config
-from modules.logging_setup import log_function
 import boto3
 import psycopg2
 import pandas as pd
 from botocore.exceptions import ClientError
+from modules.config import config
+from modules.logging_setup import log_function
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +82,10 @@ def insert_statements_into_postgres(sql_script: str) -> bool:
     """
     Execute DDL/DML SQL script against the database.
     """
+    conn = check_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql_script)
             conn.commit()
             logger.info("SQL script executed successfully.")
             return True
@@ -92,6 +96,7 @@ def insert_statements_into_postgres(sql_script: str) -> bool:
         conn.close()
 
 
+@log_function
 def check_existence(src_nm: str, dataset_nm: str, src_table_nm: str) -> bool:
     """
     Check if configuration entries already exist in the database.

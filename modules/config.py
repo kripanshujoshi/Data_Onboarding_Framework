@@ -1,9 +1,10 @@
 """
 Configuration loader for Data Onboarding Framework.
 """
+import logging
 import json
 import os
-import logging
+
 from modules.logging_setup import log_function
 
 logger = logging.getLogger(__name__)

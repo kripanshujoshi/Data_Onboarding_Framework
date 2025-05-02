@@ -2,21 +2,21 @@
 Streamlit application for Data Onboarding Framework UI and workflow orchestration.
 """
 import logging
-from modules.logging_setup import setup_logging
-
-# Initialize logging at application start
-setup_logging()
-logger = logging.getLogger(__name__)
-
 import streamlit as st
 import pandas as pd
-import os, json, traceback
+import os
+import json
+import traceback
 from datetime import datetime
 from io import BytesIO
 import zipfile
 
-# Import custom modules
+from modules.logging_setup import setup_logging
 from modules import db, onboarding_service
+
+# Initialize logging at application start
+setup_logging()
+logger = logging.getLogger(__name__)
 
 # Load configuration file
 try:
