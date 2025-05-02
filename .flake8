@@ -1,4 +1,41 @@
+# Flake8 Configuration File
+# This file defines the flake8 settings for the project.
+# Customize the options below to match the coding standards and project guidelines.
+#
+# Detailed documentation for flake8 options can be found at:
+# https://flake8.pycqa.org/en/latest/user/options.html
+#
+# Usage Examples:
+# 1. Override settings on the command line:
+#    flake8 --max-line-length=120 --ignore=E203,W503 my_script.py
+#
+# 2. Specify a custom configuration file:
+#    flake8 --config=.flake8 my_script.py
 [flake8]
 max-line-length = 120
-ignore = E203, W503, E501, W292, W293, W504
-exclude = .git,__pycache__,docs,venv
+# E203: Whitespace before ':' conflicts with black formatting.
+# W503: Line break before binary operator conflicts with PEP 8.
+# E203: Whitespace before ':' conflicts with black formatting.
+# W503: Line break before binary operator conflicts with PEP 8.
+# W504: Line break after binary operator conflicts with PEP 8, but is preferred for readability.
+ignore = E203, W503, W504
+exclude = (
+		  .git,
+		  __pycache__,
+		  docs,
+		  venv,
+		  build,
+		  dist,
+		  .tox,
+		  .eggs,
+		  *.egg,
+		  *.egg-info,
+		  *.pyc,
+		  *.pyo,
+		  *.pyd,
+		  .mypy_cache,
+		  .pytest_cache,
+		  .coverage
+)
+max-complexity = 15
+max-doc-length = 120
