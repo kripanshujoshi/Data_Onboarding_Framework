@@ -65,6 +65,22 @@ jobs:
             --parameter-overrides file://${PARAM_FILE} \
             --capabilities CAPABILITY_NAMED_IAM
 
+      - name: Check CloudFormation stack status
+        run: |
+          BRANCH=${GITHUB_REF##*/}
+          if [[ "$BRANCH" == "main" ]]; then
+            ENV=prod
+          else
+            ENV=$BRANCH
+          fi
+          STACK_NAME="DataOnboarding-${ENV}"
+          STATUS=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} --query 'Stacks[0].StackStatus' --output text)
+          echo "CloudFormation stack status: $STATUS"
+          if [[ "$STATUS" != "CREATE_COMPLETE" && "$STATUS" != "UPDATE_COMPLETE" ]]; then
+            echo "Deployment failed with status: $STATUS"
+            exit 1
+          fi
+
       - name: Archive application
         run: zip -r app.zip . -x "**/.git*" "**/.github/*"
 
