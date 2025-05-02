@@ -37,9 +37,12 @@ def generate_create_table_script(
             col_def += " PRIMARY KEY"
         columns_sql.append(col_def)
 
+    # build SQL script without backslash in f-string expression
+    sep = ",\n"
     sql_script = (
         f"CREATE TABLE {schema_name}.{src_nm}_{dataset_nm}_{table_name} (\n"
-        f"{',\n'.join(columns_sql)}\n);"
+        + sep.join(columns_sql)
+        + "\n);"
     )
     return sql_script
 
