@@ -1,0 +1,98 @@
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - dev
+      - qa
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure AWS credentials for Dev
+        if: ${{ github.ref == 'refs/heads/dev' }}
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
+          aws-region: us-east-1
+
+      - name: Configure AWS credentials for QA
+        if: ${{ github.ref == 'refs/heads/qa' }}
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_QA }}
+          aws-region: us-east-1
+
+      - name: Configure AWS credentials for Prod
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
+          aws-region: us-east-1
+
+      - name: Deploy CloudFormation stack
+        run: |
+          BRANCH=${GITHUB_REF##*/}
+          if [[ "$BRANCH" == "main" ]]; then
+            ENV=prod
+          else
+            ENV=$BRANCH
+          fi
+          PARAM_FILE="infra/parameters/${ENV}-parameters.json"
+          STACK_NAME="DataOnboarding-${ENV}"
+          aws cloudformation deploy \
+            --template-file infra/cloudformation.yaml \
+            --stack-name ${STACK_NAME} \
+            --parameter-overrides file://${PARAM_FILE} \
+            --capabilities CAPABILITY_NAMED_IAM
+
+      - name: Archive application
+        run: zip -r app.zip . -x "**/.git*" "**/.github/*"
+
+      - name: Upload artifact to S3
+        run: |
+          S3_KEY="app_${GITHUB_SHA}.zip"
+          aws s3 cp app.zip s3://${{ secrets.EB_S3_BUCKET }}/${S3_KEY}
+          echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
+
+      - name: Create application version
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name DataOnboardingApp \
+            --version-label ${{ github.sha }} \
+            --source-bundle S3Bucket=${{ secrets.EB_S3_BUCKET }},S3Key=${{ env.S3_KEY }}
+
+      - name: Set EB environment name
+        run: |
+          if [[ "${GITHUB_REF##*/}" == 'dev' ]]; then
+            echo "EB_ENV_NAME=${{ secrets.EB_ENV_DEV }}" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF##*/}" == 'qa' ]]; then
+            echo "EB_ENV_NAME=${{ secrets.EB_ENV_QA }}" >> $GITHUB_ENV
+          else
+            echo "EB_ENV_NAME=${{ secrets.EB_ENV_PROD }}" >> $GITHUB_ENV
+          fi
+
+      - name: Update environment
+        run: |
+          aws elasticbeanstalk update-environment \
+            --environment-name ${{ env.EB_ENV_NAME }} \
+            --version-label ${{ github.sha }}

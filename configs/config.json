@@ -1,0 +1,72 @@
+{
+    "database": {
+        "secret_name": "rds!db-1b3efcfe-a2fc-45b1-a8ff-c4f3bcc3e409",
+        "region": "us-east-1",
+        "host": "postgresql-data-onboarding.c1qsgmiggfyu.us-east-1.rds.amazonaws.com",
+        "dbname": "postgres",
+        "port": 5432
+    },
+    "git": {
+        "repo_owner": "akashgarje",
+        "repo_name": "ingestion-onboarding-automation",
+        "bot_name": "Streamlit Bot",
+        "bot_email": "streamlit@app.local"
+    },
+    "tables": [
+        {
+            "name": "sys_config_dataset_info",
+            "columns": ["src_nm", "dataset_nm", "file_qty", "file_range_min", "pre_proc_flg", "serv_now_priorty_cd", "sla_runtm_second", "serv_now_group_nm", "err_notfcn_email_nm", "notfcn_email_nm", "virt_env_cd", "proc_stage_cd", "catlg_flg", "trgt_dw_list", "cmput_whse_nm", "manl_upld_s3_uri_txt", "manl_upld_flg"],
+            "defaults": {
+                "file_qty": 1,
+                "file_range_min": 30,
+                "pre_proc_flg": "N",
+                "serv_now_priorty_cd": "P4",
+                "sla_runtm_second": 0,
+                "serv_now_group_nm": "kortex_nga_aws.global.l2",
+                "err_notfcn_email_nm": "Non-Production_Kortex_AWS_Alerts@kellogg.com",
+                "notfcn_email_nm": "",
+                "virt_env_cd": "preproc",
+                "proc_stage_cd": "Y",
+                "catlg_flg": "Y",
+                "manl_upld_s3_uri_txt": "",
+                "manl_upld_flg": "N"
+            }
+        },
+        {
+            "name": "sys_config_pre_proc_info",
+            "columns": ["src_nm", "dataset_nm", "file_patrn_txt", "pre_proc_methd_val", "file_qty", "fmt_type_cd"],
+            "defaults": {
+                "file_patrn_txt": "",
+                "pre_proc_methd_val": "",
+                "file_qty": 0
+            }
+        },
+        {
+            "name": "sys_config_table_info",
+            "columns": ["src_nm", "domn_nm", "dataset_nm", "redshift_table_nm", "src_table_nm", "data_clasfctn_nm", "file_qty", "fmt_type_cd", "delmtr_cd", "file_patrn_txt", "dprct_methd_cd", "load_enbl_flg", "file_hdr_cnt", "pre_proc_flg", "pre_proc_cd", "src_encod_cd", "src_chrset_cd", "src_newln_chr_cd", "proc_stage_cd", "catlg_flg", "dprct_selct_critra_txt", "bypas_file_order_seq_check_ind", "land_spctrm_flg", "wrkflw_nm", "copy_by_field_nm_not_posn_ind", "bypas_file_hdr_config_posn_check_ind", "bypas_file_hdr_config_check_ind"],
+            "defaults": {
+                "file_qty": 0,
+                "load_enbl_flg": "Y",
+                "file_hdr_cnt": 1,
+                "pre_proc_flg": "N",
+                "pre_proc_cd": "",
+                "src_encod_cd": "",
+                "src_chrset_cd": "",
+                "src_newln_chr_cd": "",
+                "proc_stage_cd": "load",
+                "catlg_flg": "Y",
+                "dprct_selct_critra_txt": "",
+                "bypas_file_order_seq_check_ind": "N",
+                "land_spctrm_flg": "",
+                "wrkflw_nm": "",
+                "copy_by_field_nm_not_posn_ind": "",
+                "bypas_file_hdr_config_posn_check_ind": "",
+                "bypas_file_hdr_config_check_ind": ""
+            }
+        },
+        {
+            "name": "sys_config_table_field_info",
+            "columns": ["src_nm", "src_table_nm", "field_nm", "field_posn_nbr", "datatype_nm", "datatype_size_val", "datatype_scale_val", "key_ind", "check_table", "field_desc", "dprct_ind", "partitn_ind", "sort_key_ind", "dist_key_ind", "proc_stage_cd", "catlg_flg", "dblqt_repl_flg", "delta_key_ind"]
+        }
+    ]
+}

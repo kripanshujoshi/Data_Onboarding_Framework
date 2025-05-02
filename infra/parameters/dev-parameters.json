@@ -1,0 +1,9 @@
+{
+  "Parameters": {
+    "ApplicationName": "DataOnboardingApp",
+    "EnvironmentName": "DataOnboardingEnv-dev",
+    "InstanceType": "t3.small",
+    "KeyName": "YOUR_EC2_KEYPAIR",
+    "DeployEnvironment": "dev"
+  }
+}

@@ -1,0 +1,11 @@
+streamlit
+gitpython
+requests
+psycopg2-binary
+pandas
+sqlglot
+openpyxl
+boto3
+pytest
+flake8
+
