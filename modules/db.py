@@ -106,10 +106,22 @@ def check_existence(src_nm: str, dataset_nm: str, src_table_nm: str) -> bool:
     try:
         with conn.cursor() as cur:
             queries = [
-                ("SELECT 1 FROM app_mgmt.sys_config_dataset_info WHERE src_nm = %s AND dataset_nm = %s", (src_nm, dataset_nm)),
-                ("SELECT 1 FROM app_mgmt.sys_config_table_info WHERE src_nm = %s AND dataset_nm = %s", (src_nm, dataset_nm)),
-                ("SELECT 1 FROM app_mgmt.sys_config_table_field_info WHERE src_nm = %s AND src_table_nm = %s", (src_nm, src_table_nm)),
-                ("SELECT 1 FROM app_mgmt.sys_config_pre_proc_info WHERE src_nm = %s AND dataset_nm = %s", (src_nm, dataset_nm)),
+                (
+                    "SELECT 1 FROM app_mgmt.sys_config_dataset_info WHERE src_nm = %s AND dataset_nm = %s",
+                    (src_nm, dataset_nm),
+                ),
+                (
+                    "SELECT 1 FROM app_mgmt.sys_config_table_info WHERE src_nm = %s AND dataset_nm = %s",
+                    (src_nm, dataset_nm),
+                ),
+                (
+                    "SELECT 1 FROM app_mgmt.sys_config_table_field_info WHERE src_nm = %s AND src_table_nm = %s",
+                    (src_nm, src_table_nm),
+                ),
+                (
+                    "SELECT 1 FROM app_mgmt.sys_config_pre_proc_info WHERE src_nm = %s AND dataset_nm = %s",
+                    (src_nm, dataset_nm),
+                ),
             ]
             for q, params in queries:
                 cur.execute(q, params)

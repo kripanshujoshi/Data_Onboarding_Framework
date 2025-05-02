@@ -2,13 +2,9 @@
 Business logic for Data Onboarding Framework: template generation, SQL script generation, file zipping, and git push.
 """
 import os
-import streamlit as st
 import pandas as pd
-import tempfile
-import zipfile
-from io import BytesIO
 from datetime import datetime
-from modules import metadata, db, git_helper, sql_generator
+from modules import metadata, sql_generator
 from modules.config_generators import generate_sys_config_dataset_info, generate_sys_config_pre_proc_info, generate_sys_config_table_info
 from modules.logging_setup import log_function
 

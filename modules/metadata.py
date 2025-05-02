@@ -28,7 +28,9 @@ def extract_metadata_from_dataframe(df, src_nm, table_nm):
         col_data = df[col].dropna()
         inferred_type = infer_snowflake_type(col_data)
         max_length = col_data.astype(str).str.len().max() if not col_data.empty else 0
-        primary_key = "X" if col_data.nunique() == len(df) and not col_data.empty else ""
+        primary_key = (
+            "X" if col_data.nunique() == len(df) and not col_data.empty else ""
+        )
         extracted_data.append({
             "src_nm": src_nm,
             "src_table_nm": redshift_table_nm,
