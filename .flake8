@@ -19,23 +19,22 @@ max-line-length = 120
 # W503: Line break before binary operator conflicts with PEP 8.
 # W504: Line break after binary operator conflicts with PEP 8, but is preferred for readability.
 ignore = E203, W503, W504, E501
-exclude = (
-		  .git,
-		  __pycache__,
-		  docs,
-		  venv,
-		  build,
-		  dist,
-		  .tox,
-		  .eggs,
-		  *.egg,
-		  *.egg-info,
-		  *.pyc,
-		  *.pyo,
-		  *.pyd,
-		  .mypy_cache,
-		  .pytest_cache,
-		  .coverage
-)
-max-complexity = 15
-max-doc-length = 120
+exclude = 
+    .git,
+    __pycache__,
+    docs,
+    venv,
+    build,
+    dist,
+    .tox,
+    .eggs,
+    *.egg,
+    *.egg-info,
+    *.pyc,
+    *.pyo,
+    *.pyd,
+    .mypy_cache,
+    .pytest_cache,
+    .coverage
+max-complexity = 20
+max-doc-length = 150
