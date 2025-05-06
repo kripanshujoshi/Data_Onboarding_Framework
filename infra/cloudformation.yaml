@@ -51,7 +51,7 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${ApplicationName}-eb-artifacts-${AWS::AccountId}'
+      BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
 
   InitialVersion:
     Type: AWS::ElasticBeanstalk::ApplicationVersion
@@ -82,3 +82,6 @@ Resources:
 Outputs:
   EnvURL:
     Value: !GetAtt Environment.EndpointURL
+  S3BucketName:
+    Description: Name of the S3 bucket for EB artifacts
+    Value: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
