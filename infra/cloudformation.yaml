@@ -51,7 +51,7 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${ApplicationName}-eb-artifacts-${AWS::AccountId}'
+      BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
 
   InitialVersion:
     Type: AWS::ElasticBeanstalk::ApplicationVersion
@@ -75,7 +75,13 @@ Resources:
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: IamInstanceProfile
           Value: !Ref InstanceProfile
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: LOG_FILE
+          Value: /var/log/app.log
 
 Outputs:
   EnvURL:
     Value: !GetAtt Environment.EndpointURL
+  S3BucketName:
+    Description: Name of the S3 bucket for EB artifacts
+    Value: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'

@@ -4,6 +4,7 @@
     "EnvironmentName": "DataOnboardingEnv-qa",
     "InstanceType": "t3.small",
     "KeyName": "YOUR_EC2_KEYPAIR",
-    "DeployEnvironment": "qa"
+    "DeployEnvironment": "qa",
+    "S3BucketName": "DataOnboardingApp-eb-artifacts-<AWS_ACCOUNT_ID>"
   }
 }
