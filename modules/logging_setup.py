@@ -32,7 +32,7 @@ def log_function(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         logger = logging.getLogger(func.__module__)
-        logger.debug(f"Entering {func.__name__}")
+        logger.debug(f"Entering {func.__name__} with args: {args}, kwargs: {kwargs}")
         try:
             result = func(*args, **kwargs)
             logger.debug(f"Exiting {func.__name__}")
