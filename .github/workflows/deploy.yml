@@ -10,6 +10,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
     permissions:
       id-token: write
       contents: read
