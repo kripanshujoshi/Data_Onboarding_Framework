@@ -73,6 +73,11 @@ jobs:
         run: |
           aws cloudformation describe-stack-events --stack-name ${STACK_NAME} --output table
 
+      - name: Describe CFN events on failure
+        if: failure()
+        run: |
+          aws cloudformation describe-stack-events --stack-name ${STACK_NAME} --output table
+
       - name: Check CloudFormation stack status
         run: |
           BRANCH=${GITHUB_REF##*/}
