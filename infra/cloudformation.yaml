@@ -53,7 +53,8 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
+      BucketName:
+        Fn::ToLower: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
 
   InitialVersion:
     Type: AWS::ElasticBeanstalk::ApplicationVersion
