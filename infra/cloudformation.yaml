@@ -57,7 +57,6 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
-    AutoDeleteObjects: true
     Properties:
       BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
       
