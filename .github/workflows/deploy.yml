@@ -59,23 +59,14 @@ jobs:
           echo "ENV=$ENV" >> $GITHUB_ENV
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
 
-      - name: Cleanup previous CF stack if exists
-        run: |
-          if aws cloudformation describe-stacks --stack-name ${STACK_NAME} >/dev/null 2>&1; then
-            echo "Deleting existing CloudFormation stack ${STACK_NAME}..."
-            aws cloudformation delete-stack --stack-name ${STACK_NAME}
-            aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}
-          else
-            echo "No existing stack named ${STACK_NAME}, skipping delete."
-          fi
-
       - name: Deploy CloudFormation stack
         run: |
           aws cloudformation deploy \
             --template-file infra/cloudformation.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json \
-            --capabilities CAPABILITY_NAMED_IAM
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
 
       - name: Describe CFN events on failure
         if: failure()
