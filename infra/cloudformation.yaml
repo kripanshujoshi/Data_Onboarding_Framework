@@ -57,7 +57,6 @@ Resources:
     Type: AWS::ElasticBeanstalk::ApplicationVersion
     Properties:
       ApplicationName: !Ref Application
-      VersionLabel: initial
       SourceBundle:
         S3Bucket: !Ref S3Bucket
         S3Key: initial.zip
