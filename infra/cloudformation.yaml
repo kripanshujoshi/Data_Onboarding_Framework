@@ -55,14 +55,6 @@ Resources:
     Properties:
       BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
 
-  InitialVersion:
-    Type: AWS::ElasticBeanstalk::ApplicationVersion
-    Properties:
-      ApplicationName: !Ref Application
-      SourceBundle:
-        S3Bucket: !Ref S3Bucket
-        S3Key: initial.zip
-
   Environment:
     Type: AWS::ElasticBeanstalk::Environment
     Properties:
