@@ -126,25 +126,12 @@ jobs:
           aws s3 cp app.zip s3://${EB_S3_BUCKET}/${S3_KEY}
           echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
 
-      - name: Create application version
+      # Deploy application version via CloudFormation
+      - name: Deploy application via CloudFormation
         run: |
-          aws elasticbeanstalk create-application-version \
-            --application-name DataOnboardingApp \
-            --version-label ${{ github.sha }} \
-            --source-bundle S3Bucket=${{ env.EB_S3_BUCKET }},S3Key=${{ env.S3_KEY }}
-
-      - name: Set EB environment name
-        run: |
-          if [[ "${GITHUB_REF##*/}" == 'dev' ]]; then
-            echo "EB_ENV_NAME=${{ secrets.EB_ENV_DEV }}" >> $GITHUB_ENV
-          elif [[ "${GITHUB_REF##*/}" == 'qa' ]]; then
-            echo "EB_ENV_NAME=${{ secrets.EB_ENV_QA }}" >> $GITHUB_ENV
-          else
-            echo "EB_ENV_NAME=${{ secrets.EB_ENV_PROD }}" >> $GITHUB_ENV
-          fi
-
-      - name: Update environment
-        run: |
-          aws elasticbeanstalk update-environment \
-            --environment-name ${{ env.EB_ENV_NAME }} \
-            --version-label ${{ github.sha }}
+          aws cloudformation deploy \
+            --template-file infra/cloudformation.yaml \
+            --stack-name ${STACK_NAME} \
+            --parameter-overrides file://infra/parameters/${ENV}-parameters.json SourceBundleKey=${S3_KEY} \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
