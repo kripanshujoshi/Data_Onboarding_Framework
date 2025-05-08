@@ -1,10 +1,9 @@
 {
   "Parameters": {
-    "ApplicationName": "DataOnboardingApp",
+    "ApplicationName": "dataonboardingapp",
     "EnvironmentName": "DataOnboardingEnv-qa",
     "InstanceType": "t3.small",
     "KeyName": "data-onboarding-framework-qa",
-    "DeployEnvironment": "qa",
-    "S3BucketName": "dataOnboardingapp-eb-artifacts-<AWS_ACCOUNT_ID>"
+    "DeployEnvironment": "qa"
   }
 }

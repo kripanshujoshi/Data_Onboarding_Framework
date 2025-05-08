@@ -5,6 +5,8 @@ Parameters:
   ApplicationName:
     Type: String
     Default: DataOnboardingApp
+    AllowedPattern: '^[a-z0-9-]+$'
+    ConstraintDescription: 'Must be lowercase letters, numbers, and hyphens only'
   EnvironmentName:
     Type: String
     Default: DataOnboardingEnv
