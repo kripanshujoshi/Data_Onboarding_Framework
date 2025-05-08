@@ -4,7 +4,7 @@ Description: Elastic Beanstalk deployment stack for Data Onboarding Framework
 Parameters:
   ApplicationName:
     Type: String
-    Default: DataOnboardingApp
+    Default: dataonboardingapp
     AllowedPattern: '^[a-z0-9-]+$'
     ConstraintDescription: 'Must be lowercase letters, numbers, and hyphens only'
   EnvironmentName:
