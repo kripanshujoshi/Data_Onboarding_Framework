@@ -5,6 +5,8 @@ Parameters:
   ApplicationName:
     Type: String
     Default: DataOnboardingApp
+    AllowedPattern: '^[a-z0-9-]+$'
+    ConstraintDescription: 'Must be lowercase letters, numbers, and hyphens only'
   EnvironmentName:
     Type: String
     Default: DataOnboardingEnv
@@ -51,8 +53,7 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName:
-        Fn::ToLower: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
+      BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
 
   InitialVersion:
     Type: AWS::ElasticBeanstalk::ApplicationVersion
