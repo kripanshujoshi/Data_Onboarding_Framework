@@ -51,6 +51,18 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
           aws-region: us-east-1
 
+      # Upload initial.zip to the EB artifacts S3 bucket for initial CF deployment
+      - name: Compute EB artifacts bucket name
+        run: |
+          BRANCH=${GITHUB_REF##*/}
+          if [[ "$BRANCH" == "main" ]]; then ENV=prod; else ENV=$BRANCH; fi
+          echo "EB_S3_BUCKET=dataonboardingapp-eb-artifacts-${ENV}" >> $GITHUB_ENV
+
+      - name: Upload initial application bundle
+        run: |
+          zip -r initial.zip . -x "**/.git*" "**/.github/*"
+          aws s3 cp initial.zip s3://${EB_S3_BUCKET}/initial.zip
+
       - name: Deploy CloudFormation stack
         run: |
           BRANCH=${GITHUB_REF##*/}
