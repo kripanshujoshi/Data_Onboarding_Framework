@@ -4,6 +4,7 @@
     "EnvironmentName": "dataonboardingenv-qa",
     "InstanceType": "t3.small",
     "KeyName": "data-onboarding-framework-qa",
-    "DeployEnvironment": "qa"
+    "DeployEnvironment": "qa",
+    "SolutionStackName": "64bit Amazon Linux 2023 v4.5.1 running Python 3.13"
   }
 }

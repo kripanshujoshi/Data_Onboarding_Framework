@@ -23,6 +23,10 @@ Parameters:
       - qa
       - prod
     Default: dev
+  SolutionStackName:
+    Type: String
+    Default: "64bit Amazon Linux 2023 v4.5.1 running Python 3.13"
+    Description: EB platform solution stack name (e.g. 64bit Amazon Linux 2023 v4.5.1 running Python 3.13)
 
 Resources:
   ServiceRole:
@@ -60,7 +64,7 @@ Resources:
     Properties:
       EnvironmentName: !Ref EnvironmentName
       ApplicationName: !Ref Application
-      SolutionStackName: "64bit Amazon Linux 2 v3.3.14 running Python 3.8"
+      SolutionStackName: !Ref SolutionStackName
       OptionSettings:
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: InstanceType
