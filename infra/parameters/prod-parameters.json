@@ -5,6 +5,6 @@
     "InstanceType": "t3.small",
     "KeyName": "data-onboarding-framework-prod",
     "DeployEnvironment": "prod",
-    "S3BucketName": "DataOnboardingApp-eb-artifacts-<AWS_ACCOUNT_ID>"
+    "S3BucketName": "dataOnboardingapp-eb-artifacts-<AWS_ACCOUNT_ID>"
   }
 }
