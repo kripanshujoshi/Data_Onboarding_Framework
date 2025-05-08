@@ -1,7 +1,7 @@
 {
   "Parameters": {
     "ApplicationName": "dataonboardingapp",
-    "EnvironmentName": "DataOnboardingEnv-qa",
+    "EnvironmentName": "dataonboardingenv-qa",
     "InstanceType": "t3.small",
     "KeyName": "data-onboarding-framework-qa",
     "DeployEnvironment": "qa"
