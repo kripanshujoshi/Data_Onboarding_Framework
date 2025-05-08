@@ -62,7 +62,6 @@ Resources:
   Environment:
     Type: AWS::ElasticBeanstalk::Environment
     Properties:
-      EnvironmentName: !Ref EnvironmentName
       ApplicationName: !Ref Application
       SolutionStackName: !Ref SolutionStackName
       OptionSettings:
