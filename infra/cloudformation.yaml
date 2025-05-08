@@ -60,7 +60,7 @@ Resources:
     Properties:
       EnvironmentName: !Ref EnvironmentName
       ApplicationName: !Ref Application
-      SolutionStackName: "64bit Amazon Linux 2 running Python 3.8"
+      SolutionStackName: "64bit Amazon Linux 2 v3.3.14 running Python 3.8"
       OptionSettings:
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: InstanceType
