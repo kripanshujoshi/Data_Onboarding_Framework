@@ -56,9 +56,9 @@ Resources:
 
   S3Bucket:
     Type: AWS::S3::Bucket
-    Properties:
+        Properties:
       BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
-
+      
   Environment:
     Type: AWS::ElasticBeanstalk::Environment
     Properties:
