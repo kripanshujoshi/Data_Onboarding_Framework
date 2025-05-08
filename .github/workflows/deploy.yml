@@ -71,12 +71,20 @@ jobs:
       - name: Describe CFN events on failure
         if: failure()
         run: |
-          aws cloudformation describe-stack-events --stack-name ${STACK_NAME} --output table
+          if aws cloudformation describe-stacks --stack-name ${STACK_NAME} >/dev/null 2>&1; then
+            aws cloudformation describe-stack-events --stack-name ${STACK_NAME} --output table
+          else
+            echo "Stack ${STACK_NAME} does not exist; skipping describe-stack-events."
+          fi
 
       - name: Describe CFN events on failure
         if: failure()
         run: |
-          aws cloudformation describe-stack-events --stack-name ${STACK_NAME} --output table
+          if aws cloudformation describe-stacks --stack-name ${STACK_NAME} >/dev/null 2>&1; then
+            aws cloudformation describe-stack-events --stack-name ${STACK_NAME} --output table
+          else
+            echo "Stack ${STACK_NAME} does not exist; skipping describe-stack-events."
+          fi
 
       - name: Check CloudFormation stack status
         run: |
