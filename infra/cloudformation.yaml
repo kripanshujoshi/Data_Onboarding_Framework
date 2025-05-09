@@ -88,6 +88,7 @@ Resources:
     Properties:
       ApplicationName: !Ref Application
       Description: !Sub "Application version ${VersionLabel}"
+      VersionLabel: !Ref VersionLabel
       SourceBundle:
         S3Bucket: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
         S3Key: !Ref SourceBundleKey
