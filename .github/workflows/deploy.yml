@@ -77,6 +77,20 @@ jobs:
           aws s3 cp app.zip s3://${EB_S3_BUCKET}/${S3_KEY}
           echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
 
+      - name: Set CloudFormation parameters
+        run: |
+          # Extract parameters from JSON file directly
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          ENV_NAME=$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json)
+          INSTANCE_TYPE=$(jq -r '.Parameters.InstanceType' infra/parameters/${ENV}-parameters.json)
+          KEY_NAME=$(jq -r '.Parameters.KeyName' infra/parameters/${ENV}-parameters.json)
+          SOLUTION_STACK=$(jq -r '.Parameters.SolutionStackName' infra/parameters/${ENV}-parameters.json)
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+          echo "ENV_NAME=$ENV_NAME" >> $GITHUB_ENV
+          echo "INSTANCE_TYPE=$INSTANCE_TYPE" >> $GITHUB_ENV
+          echo "KEY_NAME=$KEY_NAME" >> $GITHUB_ENV
+          echo "SOLUTION_STACK=$SOLUTION_STACK" >> $GITHUB_ENV
+
       - name: Package CloudFormation
         run: |
           aws cloudformation package \
@@ -89,6 +103,13 @@ jobs:
           aws cloudformation deploy \
             --template-file packaged.yaml \
             --stack-name ${STACK_NAME} \
-            --parameter-overrides $(jq -r '.Parameters | to_entries | map("\(.key)=\(.value)") | join(" ")' infra/parameters/${ENV}-parameters.json) SourceBundleKey=${S3_KEY} \
+            --parameter-overrides \
+              ApplicationName=${APP_NAME} \
+              EnvironmentName=${ENV_NAME} \
+              InstanceType=${INSTANCE_TYPE} \
+              KeyName=${KEY_NAME} \
+              DeployEnvironment=${ENV} \
+              SolutionStackName="${SOLUTION_STACK}" \
+              SourceBundleKey=${S3_KEY} \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
