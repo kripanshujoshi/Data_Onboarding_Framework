@@ -86,14 +86,7 @@ jobs:
 
       - name: Deploy CloudFormation stack
         run: |
-          aws cloudformation package \
-            --template-file infra/cloudformation.yaml \
-            --s3-bucket dataonboardingapp-cfn-artifacts-${ENV} \
-            --output-template-file packaged.yaml
-
-      - name: Deploy CloudFormation stack
-        run: |
-          S3_BUCKET=$(aws cloudformation deploy \
+          aws cloudformation deploy \
             --template-file packaged.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json SourceBundleKey=${S3_KEY} \
