@@ -76,5 +76,26 @@ jobs:
             --template-file packaged.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json \
+            --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' \
+            --output text)
+          echo "EB_S3_BUCKET=${S3_BUCKET}" >> $GITHUB_ENV
+
+      - name: Archive application
+        run: zip -r app.zip . -x "**/.git*" "**/.github/*"
+
+      - name: Upload artifact to S3
+        run: |
+          S3_KEY="app_${GITHUB_SHA}.zip"
+          aws s3 cp app.zip s3://${EB_S3_BUCKET}/${S3_KEY}
+          echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
+
+      # Deploy application version via CloudFormation
+      - name: Deploy application via CloudFormation
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/cloudformation.yaml \
+            --stack-name ${STACK_NAME} \
+            --parameter-overrides file://infra/parameters/${ENV}-parameters.json SourceBundleKey=${S3_KEY} \
+
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
