@@ -87,7 +87,7 @@ Resources:
     Type: AWS::ElasticBeanstalk::ApplicationVersion
     Properties:
       ApplicationName: !Ref Application
-      VersionLabel: !Ref VersionLabel
+      Description: !Sub "Application version ${VersionLabel}"
       SourceBundle:
         S3Bucket: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
         S3Key: !Ref SourceBundleKey
@@ -98,7 +98,7 @@ Resources:
       ApplicationName: !Ref Application
       EnvironmentName: !Ref EnvironmentName
       SolutionStackName: !Ref SolutionStackName
-      VersionLabel: !Ref ApplicationVersion
+      VersionLabel: !Ref VersionLabel
       OptionSettings:
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: InstanceType
