@@ -56,12 +56,26 @@ jobs:
           BRANCH=${GITHUB_REF##*/}
           if [[ "$BRANCH" == "main" ]]; then ENV=prod; else ENV=$BRANCH; fi
           STACK_NAME="DataOnboarding-${ENV}"
+          S3_BUCKET="dataonboardingapp-eb-artifacts-${ENV}"
           echo "ENV=$ENV" >> $GITHUB_ENV
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          echo "EB_S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
 
-      - name: Create CFN artifacts bucket
+      - name: Create S3 buckets
         run: |
+          # Create EB artifacts bucket first
+          aws s3 mb s3://${EB_S3_BUCKET} || true
+          # Create CloudFormation artifacts bucket
           aws s3 mb s3://dataonboardingapp-cfn-artifacts-${ENV} || true
+
+      - name: Archive application
+        run: zip -r app.zip . -x "**/.git*" "**/.github/*"
+
+      - name: Upload artifact to S3
+        run: |
+          S3_KEY="app.zip"
+          aws s3 cp app.zip s3://${EB_S3_BUCKET}/${S3_KEY}
+          echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
 
       - name: Package CloudFormation
         run: |
@@ -73,28 +87,6 @@ jobs:
       - name: Deploy CloudFormation stack
         run: |
           S3_BUCKET=$(aws cloudformation deploy \
-            --template-file packaged.yaml \
-            --stack-name ${STACK_NAME} \
-            --parameter-overrides file://infra/parameters/${ENV}-parameters.json \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset \
-            --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' \
-            --output text)
-          echo "EB_S3_BUCKET=${S3_BUCKET}" >> $GITHUB_ENV
-
-      - name: Archive application
-        run: zip -r app.zip . -x "**/.git*" "**/.github/*"
-
-      - name: Upload artifact to S3
-        run: |
-          S3_KEY="app.zip"
-          aws s3 cp app.zip s3://${EB_S3_BUCKET}/${S3_KEY}
-          echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
-
-      # Deploy application version via CloudFormation
-      - name: Deploy application via CloudFormation
-        run: |
-          aws cloudformation deploy \
             --template-file packaged.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json SourceBundleKey=${S3_KEY} \
