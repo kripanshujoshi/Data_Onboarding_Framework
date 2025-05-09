@@ -150,8 +150,6 @@ if st.session_state.template_generated:
     tab1, tab2, tab3, tab4 = st.tabs(sheet_names)
 
     def update_dataset_info():
-        st.write("update dataset info - called!")
-        st.write(st.session_state.get("sys_config_dataset_info_edit"))
         st.session_state.sys_config_dataset_info = st.session_state.sys_config_dataset_info_edit
 
     def update_pre_proc_info():
@@ -267,71 +265,51 @@ if st.session_state.template_generated:
 if st.session_state.sql_generated:
     sheet_names_sql = ["Land DDL", "Stage DDL", "RDS Config Entries"]
     tab1, tab2, tab3 = st.tabs(sheet_names_sql)
-    with tab1:
-        st.text_area(
-            "Generated Land DDL Scripts",
-            st.session_state.land_sql_script,
-            height=200,
-        )
-    with tab2:
-        st.text_area(
-            "Generated Stage DDL Scripts",
-            st.session_state.stage_sql_script,
-            height=200,
-        )
+    edited = False
     with tab3:
-        edited = False
+        
         if "sys_config_dataset_info_edit" in st.session_state:
-            edited_rows = st.session_state.sys_config_dataset_info_edit.get(
-                "edited_rows", {}
-            )
+            edited_rows = st.session_state.sys_config_dataset_info_edit.get("edited_rows", {})
             for idx, changes in edited_rows.items():
                 for col, value in changes.items():
                     st.session_state.sys_config_dataset_info.at[int(idx), col] = value
                     edited = True
 
         if "sys_config_pre_proc_info_edit" in st.session_state:
-            edited_rows = st.session_state.sys_config_pre_proc_info_edit.get(
-                "edited_rows", {}
-            )
+            edited_rows = st.session_state.sys_config_pre_proc_info_edit.get("edited_rows", {})
             for idx, changes in edited_rows.items():
                 for col, value in changes.items():
                     st.session_state.sys_config_pre_proc_info.at[int(idx), col] = value
                     edited = True
 
         if "sys_config_table_info_edit" in st.session_state:
-            edited_rows = st.session_state.sys_config_table_info_edit.get(
-                "edited_rows", {}
-            )
+            edited_rows = st.session_state.sys_config_table_info_edit.get("edited_rows", {})
             for idx, changes in edited_rows.items():
                 for col, value in changes.items():
                     st.session_state.sys_config_table_info.at[int(idx), col] = value
                     edited = True
 
         if "sys_config_table_field_info_edit" in st.session_state:
-            edited_rows = st.session_state.sys_config_table_field_info_edit.get(
-                "edited_rows", {}
-            )
+            edited_rows = st.session_state.sys_config_table_field_info_edit.get("edited_rows", {})
             for idx, changes in edited_rows.items():
                 for col, value in changes.items():
                     st.session_state.metadata_df.at[int(idx), col] = value
                     edited = True
-        if edited:
-            _, _, rds_sql_script = onboarding_service.generate_sql_scripts(
-                st.session_state.metadata_df,
-                src_nm,
-                dataset_nm,
-                table_nm,
-                st.session_state.sys_config_dataset_info,
-                st.session_state.sys_config_pre_proc_info,
-                st.session_state.sys_config_table_info,
-            )
-            st.session_state.rds_sql_script = rds_sql_script
-        st.text_area(
-            "Generated RDS Scripts",
-            st.session_state.rds_sql_script,
-            height=200,
+    if edited:
+        land_sql_script, stage_sql_script, rds_sql_script = onboarding_service.generate_sql_scripts(
+            st.session_state.metadata_df, src_nm, dataset_nm, table_nm,
+            st.session_state.sys_config_dataset_info, st.session_state.sys_config_pre_proc_info, st.session_state.sys_config_table_info
         )
+        st.session_state.land_sql_script = land_sql_script
+        st.session_state.stage_sql_script = stage_sql_script
+        st.session_state.rds_sql_script = rds_sql_script
+
+    with tab1:
+        st.text_area("Generated Land DDL Scripts", st.session_state.land_sql_script, height=200)
+    with tab2:
+        st.text_area("Generated Stage DDL Scripts", st.session_state.stage_sql_script, height=200)
+    with tab3:
+        st.text_area("Generated RDS Scripts", st.session_state.rds_sql_script, height=200)
 
     col1, col2, col3 = st.columns(3)
     with col1:
