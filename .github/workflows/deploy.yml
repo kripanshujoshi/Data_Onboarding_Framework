@@ -86,7 +86,7 @@ jobs:
 
       - name: Deploy CloudFormation stack
         run: |
-          aws cloudformation deploy \
+          S3_BUCKET=$(aws cloudformation deploy \
             --template-file packaged.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json SourceBundleKey=${S3_KEY} \
