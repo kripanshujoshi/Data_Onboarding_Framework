@@ -28,10 +28,21 @@ Parameters:
     Default: "64bit Amazon Linux 2023 v4.5.1 running Python 3.11"
     Description: EB platform solution stack name (e.g. 64bit Amazon Linux 2023 v4.5.1 running Python 3.11)
 
+  CreateS3Bucket:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Set to 'true' to create the S3 bucket in CloudFormation, 'false' to use an existing bucket
+
   SourceBundleKey:
     Type: String
     Default: app.zip
     Description: S3 key of the application bundle in the artifacts bucket
+
+Conditions:
+  CreateBucket: !Equals [!Ref CreateS3Bucket, 'true']
 
 Resources:
   ServiceRole:
@@ -61,7 +72,9 @@ Resources:
 
   S3Bucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Delete
+    Condition: CreateBucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
 
@@ -70,7 +83,7 @@ Resources:
     Properties:
       ApplicationName: !Ref Application
       SourceBundle:
-        S3Bucket: !Ref S3Bucket
+        S3Bucket: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
         S3Key: !Ref SourceBundleKey
 
   Environment:
