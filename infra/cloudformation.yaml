@@ -40,6 +40,11 @@ Parameters:
     Type: String
     Default: app.zip
     Description: S3 key of the application bundle in the artifacts bucket
+    
+  VersionLabel:
+    Type: String
+    Default: "initial-version"
+    Description: Version label for the Elastic Beanstalk application version
 
 Conditions:
   CreateBucket: !Equals [!Ref CreateS3Bucket, 'true']
@@ -82,6 +87,7 @@ Resources:
     Type: AWS::ElasticBeanstalk::ApplicationVersion
     Properties:
       ApplicationName: !Ref Application
+      VersionLabel: !Ref VersionLabel
       SourceBundle:
         S3Bucket: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
         S3Key: !Ref SourceBundleKey

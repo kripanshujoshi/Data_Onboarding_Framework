@@ -71,10 +71,19 @@ jobs:
       - name: Archive application
         run: zip -r app.zip . -x "**/.git*" "**/.github/*"
 
-      - name: Upload artifact to S3
+      - name: Upload artifact to S3 with versioning
         run: |
-          S3_KEY="app.zip"
+          # Create unique version identifier using timestamp and commit hash
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          VERSION_LABEL="v${TIMESTAMP}-${COMMIT_HASH}"
+          S3_KEY="app-${VERSION_LABEL}.zip"
+          
+          # Upload the application bundle to S3 with version in filename
           aws s3 cp app.zip s3://${EB_S3_BUCKET}/${S3_KEY}
+          
+          # Save the app version label and S3 key for later use
+          echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
           echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
 
       - name: Set CloudFormation parameters
@@ -111,6 +120,7 @@ jobs:
               DeployEnvironment=${ENV} \
               SolutionStackName="${SOLUTION_STACK}" \
               SourceBundleKey=${S3_KEY} \
+              VersionLabel=${VERSION_LABEL} \
               CreateS3Bucket='false' \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
