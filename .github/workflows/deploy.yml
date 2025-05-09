@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload artifact to S3
         run: |
-          S3_KEY="app_${GITHUB_SHA}.zip"
+          S3_KEY="app.zip"
           aws s3 cp app.zip s3://${EB_S3_BUCKET}/${S3_KEY}
           echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
 
@@ -95,9 +95,8 @@ jobs:
       - name: Deploy application via CloudFormation
         run: |
           aws cloudformation deploy \
-            --template-file infra/cloudformation.yaml \
+            --template-file packaged.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json SourceBundleKey=${S3_KEY} \
-
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
