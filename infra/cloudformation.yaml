@@ -25,8 +25,9 @@ Parameters:
     Default: dev
   SolutionStackName:
     Type: String
-    Default: "64bit Amazon Linux 2023 v4.5.1 running Python 3.13"
-    Description: EB platform solution stack name (e.g. 64bit Amazon Linux 2023 v4.5.1 running Python 3.13)
+    Default: "64bit Amazon Linux 2023 v4.5.1 running Python 3.11"
+    Description: EB platform solution stack name (e.g. 64bit Amazon Linux 2023 v4.5.1 running Python 3.11)
+
   SourceBundleKey:
     Type: String
     Default: app.zip

@@ -59,60 +59,23 @@ jobs:
           echo "ENV=$ENV" >> $GITHUB_ENV
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
 
+      - name: Create CFN artifacts bucket
+        run: |
+          aws s3 mb s3://dataonboardingapp-cfn-artifacts-${ENV} || true
+
+      - name: Package CloudFormation
+        run: |
+          aws cloudformation package \
+            --template-file infra/cloudformation.yaml \
+            --s3-bucket dataonboardingapp-cfn-artifacts-${ENV} \
+            --output-template-file packaged.yaml
+
       - name: Deploy CloudFormation stack
         run: |
           aws cloudformation deploy \
-            --template-file infra/cloudformation.yaml \
+            --template-file packaged.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset
-
-      - name: Describe CFN events on failure
-        if: failure()
-        run: |
-          if aws cloudformation describe-stacks --stack-name ${STACK_NAME} >/dev/null 2>&1; then
-            aws cloudformation describe-stack-events --stack-name ${STACK_NAME} --output table
-          else
-            echo "Stack ${STACK_NAME} does not exist; skipping describe-stack-events."
-          fi
-
-      - name: Describe CFN events on failure
-        if: failure()
-        run: |
-          if aws cloudformation describe-stacks --stack-name ${STACK_NAME} >/dev/null 2>&1; then
-            aws cloudformation describe-stack-events --stack-name ${STACK_NAME} --output table
-          else
-            echo "Stack ${STACK_NAME} does not exist; skipping describe-stack-events."
-          fi
-
-      - name: Check CloudFormation stack status
-        run: |
-          BRANCH=${GITHUB_REF##*/}
-          if [[ "$BRANCH" == "main" ]]; then
-            ENV=prod
-          else
-            ENV=$BRANCH
-          fi
-          STACK_NAME="DataOnboarding-${ENV}"
-          STATUS=$(aws cloudformation describe-stacks --stack-name ${STACK_NAME} --query 'Stacks[0].StackStatus' --output text)
-          echo "CloudFormation stack status: $STATUS"
-          if [[ "$STATUS" != "CREATE_COMPLETE" && "$STATUS" != "UPDATE_COMPLETE" ]]; then
-            echo "Deployment failed with status: $STATUS"
-            exit 1
-          fi
-
-      - name: Get EB artifacts S3 bucket name
-        run: |
-          BRANCH=${GITHUB_REF##*/}
-          if [[ "$BRANCH" == "main" ]]; then
-            ENV=prod
-          else
-            ENV=$BRANCH
-          fi
-          STACK_NAME="DataOnboarding-${ENV}"
-          S3_BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name ${STACK_NAME} \
             --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' \
             --output text)
           echo "EB_S3_BUCKET=${S3_BUCKET}" >> $GITHUB_ENV
@@ -133,5 +96,6 @@ jobs:
             --template-file infra/cloudformation.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json SourceBundleKey=${S3_KEY} \
+
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
