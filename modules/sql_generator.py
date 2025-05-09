@@ -61,33 +61,34 @@ def create_insert_statement(table_name: str, df: pd.DataFrame) -> str:
 
 
 @log_function
-def create_update_statement(
-    table_name: str, df: pd.DataFrame, where_keys: list
-) -> str:
+def create_update_statement(table_name: str, df: pd.DataFrame, where_keys: list) -> str:
     if df.empty:
         return f"-- No data to update in {table_name}"
-
+    
     update_queries = []
 
     for _, row in df.iterrows():
         set_clauses = []
         where_clauses = []
 
+        # Handle value conversion
+        def format_val(val):
+            if pd.isna(val):
+                return "NULL"
+            return f"'{val}'" if isinstance(val, str) else str(val)
+
         for col in df.columns:
-            val = row[col]
-            val_str = f"'{val}'" if pd.notna(val) else "NULL"
+            val_str = format_val(row[col])
             if col in where_keys:
                 where_clauses.append(f"{col} = {val_str}")
             else:
                 set_clauses.append(f"{col} = {val_str}")
 
+        # Skip incomplete statements
         if not set_clauses or not where_clauses:
             continue
 
-        query = (
-            f"UPDATE {table_name} SET {', '.join(set_clauses)} "
-            f"WHERE {' AND '.join(where_clauses)};"
-        )
+        query = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE {' AND '.join(where_clauses)};"
         update_queries.append(query)
 
     return "\n".join(update_queries)
@@ -123,7 +124,7 @@ def generate_insert_statements(
         update_statements.append(
             create_update_statement(
                 "app_mgmt.sys_config_table_field_info", df_metadata_df,
-                ["src_nm", "src_table_nm"]
+                ["src_nm", "src_table_nm", "field_posn_nbr"]
             )
         )
 
