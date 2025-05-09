@@ -47,25 +47,25 @@ def fetch_dataframe(query, params):
 
 @log_function
 def get_table_field_info(src_nm, src_table_nm):
-    query = f"SELECT * FROM app_mgmt.sys_config_table_field_info WHERE src_nm = %s AND src_table_nm = %s"
+    query = "SELECT * FROM app_mgmt.sys_config_table_field_info WHERE src_nm = %s AND src_table_nm = %s"
     return fetch_dataframe(query, (src_nm, src_table_nm))
 
 
 @log_function
 def get_dataset_info(src_nm, dataset_nm):
-    query = f"SELECT * FROM app_mgmt.sys_config_dataset_info WHERE src_nm = %s AND dataset_nm = %s"
+    query = "SELECT * FROM app_mgmt.sys_config_dataset_info WHERE src_nm = %s AND dataset_nm = %s"
     return fetch_dataframe(query, (src_nm, dataset_nm))
 
 
 @log_function
 def get_table_info(src_nm, dataset_nm):
-    query = f"SELECT * FROM app_mgmt.sys_config_table_info WHERE src_nm = %s AND dataset_nm = %s"
+    query = "SELECT * FROM app_mgmt.sys_config_table_info WHERE src_nm = %s AND dataset_nm = %s"
     return fetch_dataframe(query, (src_nm, dataset_nm))
 
 
 @log_function
 def get_pre_proc_info(src_nm, dataset_nm):
-    query = f"SELECT * FROM app_mgmt.sys_config_pre_proc_info WHERE src_nm = %s AND dataset_nm = %s"
+    query = "SELECT * FROM app_mgmt.sys_config_pre_proc_info WHERE src_nm = %s AND dataset_nm = %s"
     return fetch_dataframe(query, (src_nm, dataset_nm))
 
 
@@ -73,8 +73,10 @@ def get_pre_proc_info(src_nm, dataset_nm):
 def generate_sql_scripts(df_metadata_df, src_nm, dataset_nm, table_nm, df_dataset_info, df_pre_proc_info, df_table_info):
     land_sql_script = sql_generator.generate_create_table_script(df_metadata_df, 'land', src_nm, dataset_nm)
     stage_sql_script = sql_generator.generate_create_table_script(df_metadata_df, 'stage', src_nm, dataset_nm)
-    rds_sql_script = sql_generator.generate_insert_statements(src_nm, dataset_nm, table_nm,
-        df_dataset_info, df_pre_proc_info, df_table_info, df_metadata_df)
+    rds_sql_script = sql_generator.generate_insert_statements(
+        src_nm, dataset_nm, table_nm,
+        df_dataset_info, df_pre_proc_info, df_table_info, df_metadata_df
+    )
     return land_sql_script, stage_sql_script, rds_sql_script
 
 
