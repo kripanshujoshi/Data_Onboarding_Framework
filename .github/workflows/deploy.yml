@@ -72,10 +72,12 @@ jobs:
 
       - name: Deploy CloudFormation stack
         run: |
-          aws cloudformation deploy \
+          S3_BUCKET=$(aws cloudformation deploy \
             --template-file packaged.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset \
             --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' \
             --output text)
           echo "EB_S3_BUCKET=${S3_BUCKET}" >> $GITHUB_ENV
@@ -96,6 +98,5 @@ jobs:
             --template-file infra/cloudformation.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides file://infra/parameters/${ENV}-parameters.json SourceBundleKey=${S3_KEY} \
-
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
