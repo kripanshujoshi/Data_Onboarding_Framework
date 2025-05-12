@@ -79,7 +79,6 @@ jobs:
               -x ".flake8" \
               -x ".gitignore" \
 
-
       - name: Upload artifact to S3 with versioning
         run: |
           # Create unique version identifier using timestamp and commit hash
@@ -94,6 +93,19 @@ jobs:
           # Save the app version label and S3 key for later use
           echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
           echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
+          
+      - name: Create Elastic Beanstalk Application Version
+        run: |
+          # Extract application name from parameters
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          
+          # Create the application version in Elastic Beanstalk directly
+          aws elasticbeanstalk create-application-version \
+            --application-name ${APP_NAME} \
+            --version-label ${VERSION_LABEL} \
+            --description "Deployed from GitHub Actions on $(date)" \
+            --source-bundle S3Bucket=${EB_S3_BUCKET},S3Key=${S3_KEY} \
+            --auto-create-application
 
       - name: Set CloudFormation parameters
         run: |
