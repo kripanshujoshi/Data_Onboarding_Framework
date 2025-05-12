@@ -90,16 +90,6 @@ jobs:
           echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
           echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
 
-      - name: Configure Version Lifecycle Policy
-        run: |
-          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
-          
-          # Configure application to maintain version history (keep last 100 versions)
-          aws elasticbeanstalk update-application-resource-lifecycle \
-            --application-name ${APP_NAME} \
-            --resource-lifecycle-config \
-            "VersionLifecycleConfig={MaxCountRule={Enabled=true,MaxCount=100,DeleteSourceFromS3=false}}"
-            
       - name: Create Elastic Beanstalk Application Version
         run: |
           # Extract application name from parameters
