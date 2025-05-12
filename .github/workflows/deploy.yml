@@ -83,7 +83,7 @@ jobs:
             -x ".flake8" \
             -x ".gitignore" \
             -x "README.md" \
-            -x "sample_files/*" \
+            -x "Sample_Files/*" \
             -x "infra/*" \
             -x "tests/*" \
           
