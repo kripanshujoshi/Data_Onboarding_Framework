@@ -70,14 +70,15 @@ jobs:
 
       - name: Archive application
         run: zip -r app.zip . \
-              -x "**/.git*" \
-              -x "**/.github/*" \
-              -x "**/tests/*" \
-              -x "**/sample_files/*" \
-              -x "**/README.md" \
-              -x "**/infra/*" \
-              -x "**/.flake8*" \
-              -x "**/.gitignore" \
+              -x ".git*" \
+              -x ".github/*" \
+              -x "tests/*" \
+              -x "sample_files/*" \
+              -x "README.md" \
+              -x "infra/*" \
+              -x ".flake8" \
+              -x ".gitignore" \
+
 
       - name: Upload artifact to S3 with versioning
         run: |
