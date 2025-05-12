@@ -81,7 +81,11 @@ jobs:
             -x ".git*" \
             -x ".github/*" \
             -x ".flake8" \
-            -x ".gitignore"
+            -x ".gitignore" \
+            -x "README.md" \
+            -x "sample_files/*" \
+            -x "infra/*" \
+            -x "tests/*" \
           
           # Upload the application bundle to S3 with version in filename
           aws s3 cp ${S3_KEY} s3://${EB_S3_BUCKET}/${S3_KEY}
