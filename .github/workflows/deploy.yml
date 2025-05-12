@@ -68,18 +68,7 @@ jobs:
           # Create CloudFormation artifacts bucket
           aws s3 mb s3://dataonboardingapp-cfn-artifacts-${ENV} || true
 
-      - name: Archive application
-        run: zip -r app.zip . \
-              -x ".git*" \
-              -x ".github/*" \
-              -x "tests/*" \
-              -x "sample_files/*" \
-              -x "README.md" \
-              -x "infra/*" \
-              -x ".flake8" \
-              -x ".gitignore" \
-
-      - name: Upload artifact to S3 with versioning
+      - name: Archive and Upload Application
         run: |
           # Create unique version identifier using timestamp and commit hash
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
@@ -87,13 +76,30 @@ jobs:
           VERSION_LABEL="v${TIMESTAMP}-${COMMIT_HASH}"
           S3_KEY="app-${VERSION_LABEL}.zip"
           
+          # Create versioned zip file directly (include sample files that were previously excluded)
+          zip -r ${S3_KEY} . \
+            -x ".git*" \
+            -x ".github/*" \
+            -x ".flake8" \
+            -x ".gitignore"
+          
           # Upload the application bundle to S3 with version in filename
-          aws s3 cp app.zip s3://${EB_S3_BUCKET}/${S3_KEY}
+          aws s3 cp ${S3_KEY} s3://${EB_S3_BUCKET}/${S3_KEY}
           
           # Save the app version label and S3 key for later use
           echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
           echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
+
+      - name: Configure Version Lifecycle Policy
+        run: |
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
           
+          # Configure application to maintain version history (keep last 100 versions)
+          aws elasticbeanstalk update-application-resource-lifecycle \
+            --application-name ${APP_NAME} \
+            --resource-lifecycle-config \
+            "VersionLifecycleConfig={MaxCountRule={Enabled=true,MaxCount=100,DeleteSourceFromS3=false}}"
+            
       - name: Create Elastic Beanstalk Application Version
         run: |
           # Extract application name from parameters
@@ -105,7 +111,8 @@ jobs:
             --version-label ${VERSION_LABEL} \
             --description "Deployed from GitHub Actions on $(date)" \
             --source-bundle S3Bucket=${EB_S3_BUCKET},S3Key=${S3_KEY} \
-            --auto-create-application
+            --auto-create-application \
+            --process
 
       - name: Set CloudFormation parameters
         run: |
