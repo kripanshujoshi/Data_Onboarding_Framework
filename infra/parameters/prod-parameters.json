@@ -1,6 +1,6 @@
 {
   "Parameters": {
-    "ApplicationName": "dataonboardingapp",
+    "ApplicationName": "dataonboardingapp-prod",
     "EnvironmentName": "dataonboardingenv-prod",
     "InstanceType": "t3.small",
     "KeyName": "data-onboarding-framework-prod",
