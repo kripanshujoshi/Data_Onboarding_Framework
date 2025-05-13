@@ -161,31 +161,91 @@ jobs:
           echo "KEY_NAME=$KEY_NAME" >> $GITHUB_ENV
           echo "SOLUTION_STACK=$SOLUTION_STACK" >> $GITHUB_ENV
 
-      - name: Package CloudFormation
+      - name: Deploy with direct CloudFormation template
         run: |
-          # Output the original template for debugging
-          echo "Original template:"
-          cat infra/cloudformation.yaml
+          # Instead of using packaging, create a temporary direct template that won't be transformed
+          cat << EOF > direct-template.yaml
+          AWSTemplateFormatVersion: '2010-09-09'
+          Description: Elastic Beanstalk deployment stack for Data Onboarding Framework
           
-          # Force a clean package with a unique name to avoid caching issues
-          TIMESTAMP=$(date +%s)
-          aws cloudformation package \
-            --template-file infra/cloudformation.yaml \
-            --s3-bucket ${CFN_BUCKET} \
-            --output-template-file packaged-${TIMESTAMP}.yaml
+          Parameters:
+            ApplicationName:
+              Type: String
+              Default: dataonboardingapp
+            EnvironmentName:
+              Type: String
+              Default: DataOnboardingEnv
+            InstanceType:
+              Type: String
+              Default: t3.small
+            KeyName:
+              Type: AWS::EC2::KeyPair::KeyName
+            DeployEnvironment:
+              Type: String
+              Default: dev
+            SolutionStackName:
+              Type: String
+              Default: "64bit Amazon Linux 2023 v4.5.1 running Python 3.11"
+            SourceBundleKey:
+              Type: String
+              Default: app.zip
+            VersionLabel:
+              Type: String
+              Default: "initial-version"
           
-          # Set the new packaged file name
-          echo "PACKAGED_TEMPLATE=packaged-${TIMESTAMP}.yaml" >> $GITHUB_ENV
+          Resources:
+            ServiceRole:
+              Type: AWS::IAM::Role
+              Properties:
+                AssumeRolePolicyDocument:
+                  Version: '2012-10-17'
+                  Statement:
+                    - Effect: Allow
+                      Principal:
+                        Service: [ec2.amazonaws.com]
+                      Action: sts:AssumeRole
+                ManagedPolicyArns:
+                  - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+                  - arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
+                  - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
           
-          # Output the packaged template for debugging
-          echo "Packaged template:"
-          cat packaged-${TIMESTAMP}.yaml
-
-      - name: Deploy CloudFormation stack
-        run: |
-          # Use a direct template approach instead of packaging
+            InstanceProfile:
+              Type: AWS::IAM::InstanceProfile
+              Properties:
+                Roles: [ !Ref ServiceRole ]
+          
+            Environment:
+              Type: AWS::ElasticBeanstalk::Environment
+              Properties:
+                ApplicationName: !Ref ApplicationName
+                EnvironmentName: !Ref EnvironmentName
+                SolutionStackName: !Ref SolutionStackName
+                VersionLabel: !Ref VersionLabel
+                OptionSettings:
+                  - Namespace: aws:autoscaling:launchconfiguration
+                    OptionName: InstanceType
+                    Value: !Ref InstanceType
+                  - Namespace: aws:autoscaling:launchconfiguration
+                    OptionName: IamInstanceProfile
+                    Value: !Ref InstanceProfile
+                  - Namespace: aws:elasticbeanstalk:application:environment
+                    OptionName: LOG_FILE
+                    Value: /var/log/app.log
+                  - Namespace: aws:elasticbeanstalk:application:environment
+                    OptionName: PORT
+                    Value: 8000
+          
+          Outputs:
+            EnvURL:
+              Value: !GetAtt Environment.EndpointURL
+            EnvironmentName:
+              Description: "Elastic Beanstalk environment name"
+              Value: !Ref EnvironmentName
+          EOF
+          
+          # Deploy directly with the new template
           aws cloudformation deploy \
-            --template-file ${PACKAGED_TEMPLATE} \
+            --template-file direct-template.yaml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides \
               ApplicationName=${APP_NAME} \
