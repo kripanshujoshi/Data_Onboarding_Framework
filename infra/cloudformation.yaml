@@ -104,7 +104,7 @@ Resources:
           Value: /var/log/app.log
         - Namespace: aws:elasticbeanstalk:application:environment
           OptionName: PORT
-          Value: '8000'
+          Value: 8000
 
 Outputs:
   EnvURL:
