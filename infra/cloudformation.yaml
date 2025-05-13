@@ -15,7 +15,6 @@ Parameters:
     Default: t3.small
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
-
   DeployEnvironment:
     Type: String
     AllowedValues:
@@ -27,27 +26,14 @@ Parameters:
     Type: String
     Default: "64bit Amazon Linux 2023 v4.5.1 running Python 3.11"
     Description: EB platform solution stack name (e.g. 64bit Amazon Linux 2023 v4.5.1 running Python 3.11)
-
-  CreateS3Bucket:
-    Type: String
-    Default: 'false'
-    AllowedValues:
-      - 'true'
-      - 'false'
-    Description: Set to 'true' to create the S3 bucket in CloudFormation, 'false' to use an existing bucket
-
   SourceBundleKey:
     Type: String
     Default: app.zip
     Description: S3 key of the application bundle in the artifacts bucket
-    
   VersionLabel:
     Type: String
     Default: "initial-version"
     Description: Version label for the Elastic Beanstalk application version
-
-Conditions:
-  CreateBucket: !Equals [!Ref CreateS3Bucket, 'true']
 
 Resources:
   ServiceRole:
@@ -69,14 +55,6 @@ Resources:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles: [ !Ref ServiceRole ]
-
-  S3Bucket:
-    Type: AWS::S3::Bucket
-    Condition: CreateBucket
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
 
   Environment:
     Type: AWS::ElasticBeanstalk::Environment
