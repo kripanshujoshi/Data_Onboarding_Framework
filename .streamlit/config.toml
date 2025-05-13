@@ -1,17 +1,10 @@
 [server]
-headless = true
-enableCORS = false
-enableXsrfProtection = false
-port = 8000
-address = "0.0.0.0"
-maxUploadSize = 200
-
-[global]
-developmentMode = false
+port = 5000
+# This will work as localhost on Windows and 0.0.0.0 on Elastic Beanstalk
+address = "${STREAMLIT_SERVER_ADDRESS:-localhost}"
+enableCORS = true
+enableXsrfProtection = true
 
 [browser]
+serverAddress = "${STREAMLIT_SERVER_ADDRESS:-localhost}"
 gatherUsageStats = false
-serverAddress = "localhost"
-
-[runner]
-fastReruns = true
