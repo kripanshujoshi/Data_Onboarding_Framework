@@ -11,7 +11,7 @@ developmentMode = false
 
 [browser]
 gatherUsageStats = false
-serverAddress = "${STREAMLIT_SERVER_ADDRESS}"
+serverAddress = "localhost"
 serverPort = 8000
 
 [runner]
