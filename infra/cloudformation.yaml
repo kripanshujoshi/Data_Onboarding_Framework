@@ -102,9 +102,6 @@ Resources:
 Outputs:
   EnvURL:
     Value: !GetAtt Environment.EndpointURL
-  S3BucketName:
-    Description: Name of the S3 bucket for EB artifacts
-    Value: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
   EnvironmentName:
     Description: "Elastic Beanstalk environment name"
     Value: !Ref EnvironmentName
