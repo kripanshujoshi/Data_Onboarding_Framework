@@ -69,6 +69,34 @@ jobs:
           echo "EB_S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
           echo "CFN_BUCKET=$CFN_BUCKET" >> $GITHUB_ENV
 
+      - name: Clean up existing EB applications
+        run: |
+          # Check if our application already exists
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          echo "Checking if application '$APP_NAME' exists..."
+          
+          # Try to get the application
+          if aws elasticbeanstalk describe-applications --application-names $APP_NAME 2>/dev/null; then
+            echo "Application '$APP_NAME' exists. Deleting it..."
+            # Delete the application if it exists
+            aws elasticbeanstalk delete-application --application-name $APP_NAME --terminate-env-by-force
+            # Wait to ensure it's fully deleted (AWS sometimes needs time)
+            echo "Waiting 30 seconds for application deletion to complete..."
+            sleep 30
+          else
+            echo "Application '$APP_NAME' does not exist or cannot be accessed."
+          fi
+          
+          # Also check the old application name
+          if aws elasticbeanstalk describe-applications --application-names dataonboardingapp 2>/dev/null; then
+            echo "Old application 'dataonboardingapp' exists. Deleting it..."
+            aws elasticbeanstalk delete-application --application-name dataonboardingapp --terminate-env-by-force
+            echo "Waiting 30 seconds for old application deletion to complete..."
+            sleep 30
+          else
+            echo "Old application 'dataonboardingapp' does not exist or cannot be accessed."
+          fi
+
       - name: Create S3 buckets
         run: |
           # Create EB artifacts bucket first
