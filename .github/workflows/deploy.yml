@@ -163,15 +163,29 @@ jobs:
 
       - name: Package CloudFormation
         run: |
+          # Output the original template for debugging
+          echo "Original template:"
+          cat infra/cloudformation.yaml
+          
+          # Force a clean package with a unique name to avoid caching issues
+          TIMESTAMP=$(date +%s)
           aws cloudformation package \
             --template-file infra/cloudformation.yaml \
             --s3-bucket ${CFN_BUCKET} \
-            --output-template-file packaged.yaml
+            --output-template-file packaged-${TIMESTAMP}.yaml
+          
+          # Set the new packaged file name
+          echo "PACKAGED_TEMPLATE=packaged-${TIMESTAMP}.yaml" >> $GITHUB_ENV
+          
+          # Output the packaged template for debugging
+          echo "Packaged template:"
+          cat packaged-${TIMESTAMP}.yaml
 
       - name: Deploy CloudFormation stack
         run: |
+          # Use a direct template approach instead of packaging
           aws cloudformation deploy \
-            --template-file packaged.yaml \
+            --template-file ${PACKAGED_TEMPLATE} \
             --stack-name ${STACK_NAME} \
             --parameter-overrides \
               ApplicationName=${APP_NAME} \
