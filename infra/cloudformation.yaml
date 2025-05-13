@@ -72,8 +72,21 @@ Resources:
 
   Application:
     Type: AWS::ElasticBeanstalk::Application
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       ApplicationName: !Ref ApplicationName
+      
+  ApplicationVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ApplicationName: !Ref ApplicationName
+      Description: !Sub "Application version created by CloudFormation for ${ApplicationName}"
+      SourceBundle:
+        S3Bucket: !Sub "${ApplicationName}-eb-artifacts-${DeployEnvironment}"
+        S3Key: !Ref SourceBundleKey
 
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -82,8 +95,6 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
-
-  # Application version is now created directly via AWS CLI before CloudFormation deployment
 
   Environment:
     Type: AWS::ElasticBeanstalk::Environment
