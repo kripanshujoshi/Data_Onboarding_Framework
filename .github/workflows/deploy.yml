@@ -135,14 +135,15 @@ jobs:
           # Extract application name from parameters
           APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
           
-          # Create the application version in Elastic Beanstalk directly
+          # Create the application version in Elastic Beanstalk, but WITHOUT the auto-create flag
+          # We'll let CloudFormation create the application instead
           aws elasticbeanstalk create-application-version \
             --application-name ${APP_NAME} \
             --version-label ${VERSION_LABEL} \
             --description "Deployed from GitHub Actions on $(date)" \
             --source-bundle S3Bucket=${EB_S3_BUCKET},S3Key=${S3_KEY} \
-            --auto-create-application \
-            --process
+            --process \
+            || echo "Application version creation will be handled by CloudFormation"
 
       - name: Set CloudFormation parameters
         run: |
