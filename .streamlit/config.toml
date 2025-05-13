@@ -4,12 +4,15 @@ enableCORS = false
 enableXsrfProtection = false
 port = 8000
 address = "0.0.0.0"
-maxUploadSize = 100
+maxUploadSize = 200
 
 [global]
 developmentMode = false
 
 [browser]
 gatherUsageStats = false
-serverAddress = "0.0.0.0"
+serverAddress = "${STREAMLIT_SERVER_ADDRESS}"
 serverPort = 8000
+
+[runner]
+fastReruns = true
