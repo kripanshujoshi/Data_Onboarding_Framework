@@ -94,3 +94,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Ignore eb_logs directory and all its contents
+eb_logs/
