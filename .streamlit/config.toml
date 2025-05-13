@@ -4,10 +4,12 @@ enableCORS = false
 enableXsrfProtection = false
 port = 8000
 address = "0.0.0.0"
-
-[browser]
-serverAddress = "0.0.0.0"
-gatherUsageStats = false
+maxUploadSize = 100
 
 [global]
 developmentMode = false
+
+[browser]
+gatherUsageStats = false
+serverAddress = "0.0.0.0"
+serverPort = 8000
