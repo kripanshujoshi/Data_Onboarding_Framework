@@ -130,20 +130,32 @@ jobs:
           echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
           echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
 
-      - name: Create Elastic Beanstalk Application Version
+      - name: Create Elastic Beanstalk Application
         run: |
           # Extract application name from parameters
           APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
           
-          # Create the application version in Elastic Beanstalk, but WITHOUT the auto-create flag
-          # We'll let CloudFormation create the application instead
+          # First, create the application (this is required before creating a version)
+          echo "Creating application '$APP_NAME'..."
+          aws elasticbeanstalk create-application \
+            --application-name ${APP_NAME} \
+            --description "Created from GitHub Actions on $(date)" \
+            || echo "Application may already exist or will be created by CloudFormation"
+            
+          # Now create the application version after ensuring the application exists
+          echo "Creating application version '${VERSION_LABEL}'..."
           aws elasticbeanstalk create-application-version \
             --application-name ${APP_NAME} \
             --version-label ${VERSION_LABEL} \
             --description "Deployed from GitHub Actions on $(date)" \
             --source-bundle S3Bucket=${EB_S3_BUCKET},S3Key=${S3_KEY} \
-            --process \
-            || echo "Application version creation will be handled by CloudFormation"
+            --process
+            
+          # Verify that the version was created successfully
+          echo "Verifying application version exists..."
+          aws elasticbeanstalk describe-application-versions \
+            --application-name ${APP_NAME} \
+            --version-labels ${VERSION_LABEL}
 
       - name: Set CloudFormation parameters
         run: |
