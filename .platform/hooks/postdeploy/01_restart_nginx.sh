@@ -31,5 +31,12 @@ else
   echo "CRITICAL ERROR: Nginx could not be started!"
 fi
 
+# Verify Nginx is running
+if sudo service nginx status | grep -q "running"; then
+  echo "Nginx successfully restarted and is running"
+else
+  echo "Warning: Nginx may not have restarted properly"
+fi
+
 echo "Postdeploy hook completed"
 exit 0

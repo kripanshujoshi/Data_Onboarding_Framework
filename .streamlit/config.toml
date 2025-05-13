@@ -12,7 +12,6 @@ developmentMode = false
 [browser]
 gatherUsageStats = false
 serverAddress = "localhost"
-serverPort = 8000
 
 [runner]
 fastReruns = true
