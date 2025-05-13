@@ -182,6 +182,5 @@ jobs:
               SolutionStackName="${SOLUTION_STACK}" \
               SourceBundleKey=${S3_KEY} \
               VersionLabel=${VERSION_LABEL} \
-              CreateS3Bucket='false' \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
