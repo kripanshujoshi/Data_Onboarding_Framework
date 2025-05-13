@@ -55,18 +55,26 @@ jobs:
         run: |
           BRANCH=${GITHUB_REF##*/}
           if [[ "$BRANCH" == "main" ]]; then ENV=prod; else ENV=$BRANCH; fi
-          STACK_NAME="DataOnboarding-${ENV}"
-          S3_BUCKET="dataonboardingapp-eb-artifacts-${ENV}"
+          STACK_NAME="MetadataOnboarding-${ENV}"
+          
+          # Extract application name from parameters file for dynamic bucket naming
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          APP_NAME_BASE=$(echo $APP_NAME | sed 's/-dev$\|-qa$\|-prod$//')
+          
+          S3_BUCKET="${APP_NAME_BASE}-eb-artifacts-${ENV}"
+          CFN_BUCKET="${APP_NAME_BASE}-cfn-artifacts-${ENV}"
+          
           echo "ENV=$ENV" >> $GITHUB_ENV
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
           echo "EB_S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
+          echo "CFN_BUCKET=$CFN_BUCKET" >> $GITHUB_ENV
 
       - name: Create S3 buckets
         run: |
           # Create EB artifacts bucket first
           aws s3 mb s3://${EB_S3_BUCKET} || true
           # Create CloudFormation artifacts bucket
-          aws s3 mb s3://dataonboardingapp-cfn-artifacts-${ENV} || true
+          aws s3 mb s3://${CFN_BUCKET} || true
 
       - name: Archive and Upload Application
         run: |
@@ -126,7 +134,7 @@ jobs:
         run: |
           aws cloudformation package \
             --template-file infra/cloudformation.yaml \
-            --s3-bucket dataonboardingapp-cfn-artifacts-${ENV} \
+            --s3-bucket ${CFN_BUCKET} \
             --output-template-file packaged.yaml
 
       - name: Deploy CloudFormation stack
