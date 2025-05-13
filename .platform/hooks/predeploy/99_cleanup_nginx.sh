@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # Ensure staging proxy directory exists, then clear it
 mkdir -p /var/proxy/staging/nginx/conf.d
 rm -rf /var/proxy/staging/nginx/conf.d/*
