@@ -70,24 +70,6 @@ Resources:
     Properties:
       Roles: [ !Ref ServiceRole ]
 
-  Application:
-    Type: AWS::ElasticBeanstalk::Application
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      ApplicationName: !Ref ApplicationName
-      
-  ApplicationVersion:
-    Type: AWS::ElasticBeanstalk::ApplicationVersion
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      ApplicationName: !Ref ApplicationName
-      Description: !Sub "Application version created by CloudFormation for ${ApplicationName}"
-      SourceBundle:
-        S3Bucket: !Sub "${ApplicationName}-eb-artifacts-${DeployEnvironment}"
-        S3Key: !Ref SourceBundleKey
-
   S3Bucket:
     Type: AWS::S3::Bucket
     Condition: CreateBucket
@@ -98,8 +80,9 @@ Resources:
 
   Environment:
     Type: AWS::ElasticBeanstalk::Environment
+    DependsOn: S3Bucket
     Properties:
-      ApplicationName: !Ref Application
+      ApplicationName: !Ref ApplicationName
       EnvironmentName: !Ref EnvironmentName
       SolutionStackName: !Ref SolutionStackName
       VersionLabel: !Ref VersionLabel
@@ -125,4 +108,4 @@ Outputs:
     Value: !Sub '${ApplicationName}-eb-artifacts-${DeployEnvironment}'
   EnvironmentName:
     Description: "Elastic Beanstalk environment name"
-    Value: !Ref Environment
+    Value: !Ref EnvironmentName
