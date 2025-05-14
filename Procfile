@@ -1,1 +1,2 @@
-web: STREAMLIT_SERVER_PORT=8000 STREAMLIT_SERVER_ADDRESS=0.0.0.0 python -m streamlit run app.py
+# Use the EB-provided PORT and correct Streamlit server flags for WebSocket support
+web: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.enableCORS false --server.enableXsrfProtection false
