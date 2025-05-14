@@ -1,5 +1,5 @@
 [server]
-port = 5000
+port = 8000
 # This will work as localhost on Windows and 0.0.0.0 on Elastic Beanstalk
 address = "${STREAMLIT_SERVER_ADDRESS:-localhost}"
 enableCORS = true
