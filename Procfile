@@ -1,1 +1,1 @@
-web: STREAMLIT_SERVER_PORT=5000 STREAMLIT_SERVER_ADDRESS=0.0.0.0 python -m streamlit run app.py
+web: STREAMLIT_SERVER_PORT=8000 STREAMLIT_SERVER_ADDRESS=0.0.0.0 python -m streamlit run app.py
