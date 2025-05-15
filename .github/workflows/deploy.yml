@@ -217,23 +217,26 @@ jobs:
             Environment:
               Type: AWS::ElasticBeanstalk::Environment
               Properties:
-                ApplicationName: !Ref ApplicationName
-                EnvironmentName: !Ref EnvironmentName
-                SolutionStackName: !Ref SolutionStackName
-                VersionLabel: !Ref VersionLabel
-                OptionSettings:
-                  - Namespace: aws:autoscaling:launchconfiguration
-                    OptionName: InstanceType
-                    Value: !Ref InstanceType
-                  - Namespace: aws:autoscaling:launchconfiguration
-                    OptionName: IamInstanceProfile
-                    Value: !Ref InstanceProfile
-                  - Namespace: aws:elasticbeanstalk:application:environment
-                    OptionName: LOG_FILE
-                    Value: /var/log/app.log
-                  - Namespace: aws:elasticbeanstalk:application:environment
-                    OptionName: PORT
-                    Value: 8000
+                      ApplicationName: !Ref ApplicationName
+                      EnvironmentName: !Ref EnvironmentName
+                      SolutionStackName: !Ref SolutionStackName
+                      VersionLabel: !Ref VersionLabel
+                      OptionSettings:
+                        - Namespace: aws:autoscaling:launchconfiguration
+                          OptionName: InstanceType
+                          Value: !Ref InstanceType
+                        - Namespace: aws:elasticbeanstalk:environment
+                          OptionName: LoadBalancerType
+                          Value: application
+                        - Namespace: aws:autoscaling:launchconfiguration
+                          OptionName: IamInstanceProfile
+                          Value: !Ref InstanceProfile
+                        - Namespace: aws:elasticbeanstalk:application:environment
+                          OptionName: LOG_FILE
+                          Value: /var/log/app.log
+                        - Namespace: aws:elasticbeanstalk:application:environment
+                          OptionName: PORT
+                          Value: 8000
           
           Outputs:
             EnvURL:
