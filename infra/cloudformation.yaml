@@ -58,7 +58,6 @@ Resources:
 
   Environment:
     Type: AWS::ElasticBeanstalk::Environment
-    DependsOn: S3Bucket
     Properties:
       ApplicationName: !Ref ApplicationName
       EnvironmentName: !Ref EnvironmentName
