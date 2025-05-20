@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - dev
-      - qa
-      - main
+      - qa1
+      - main1
 
 jobs:
   deploy:
