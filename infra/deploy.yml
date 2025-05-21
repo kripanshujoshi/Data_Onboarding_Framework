@@ -80,18 +80,8 @@ jobs:
       
       - name: Package application
         run: |
-          mkdir -p .ebextensions
-          cat > .ebextensions/01_packages.config << EOF
-          packages:
-            yum:
-              python3-devel: []
-              gcc: []
-          
-          commands:
-            01_install_dependencies:
-              command: "pip install boto3 bcrypt"
-          EOF
-          
+          # Don't modify .ebextensions files that already exist in the repo
+          # Just create the zip package
           zip -r application.zip . -x "*.git*" -x "infra/*" -x "*.github*" -x "*.venv*" -x "*.vscode*"
       
       - name: Deploy to AWS CloudFormation
