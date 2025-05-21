@@ -17,7 +17,6 @@ on:
     # The branches below must be a subset of the branches above
     branches: ["dev", "qa1", "main1"]
 env:
-  AWS_ROLE: ${{ secrets.AWS_ROLE_TO_ASSUME }} # Using the same secret as deploy workflow
   REGION: us-east-1 # Setting AWS region to match deploy workflow
   TEMPLATE_PATH: infra/cloudformation.yml # Path to your CloudFormation template
   ACTIONS: s3:PutObject, s3:GetObject, s3:ListBucket # Common S3 actions to verify
@@ -36,12 +35,11 @@ jobs:
     steps:
       # checkout the repo for workflow to access the contents
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-      # Configure AWS Credentials. More configuration details here - https://github.com/aws-actions/configure-aws-credentials
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11      # Configure AWS Credentials. More configuration details here - https://github.com/aws-actions/configure-aws-credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
         with:
-          role-to-assume: ${{ env.AWS_ROLE }}
+          role-to-assume: ${{ github.ref_name == 'dev' && secrets.AWS_ROLE_TO_ASSUME_DEV || github.ref_name == 'qa1' && secrets.AWS_ROLE_TO_ASSUME_QA || github.ref_name == 'main' && secrets.AWS_ROLE_TO_ASSUME_PROD || github.ref_name == 'feature' && secrets.AWS_ROLE_TO_ASSUME_DEV }}
           aws-region: ${{ env.REGION }}
       # Run the VALIDATE_POLICY check. More configuration details here - https://github.com/aws-actions/cloudformation-aws-iam-policy-validator
       - name: Run AWS AccessAnalyzer ValidatePolicy check
