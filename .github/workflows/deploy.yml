@@ -23,7 +23,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -36,9 +36,26 @@ jobs:
 
       - name: Run DB migrations
         run: |
+          # Ensure ENV is set before this step
           python scripts/pre_deploy.py --env ${ENV}
 
-      - name: Configure AWS credentials
+      # Configure AWS credentials separately for each branch
+      - name: Configure AWS creds for dev
+        if: startsWith(github.ref, 'refs/heads/dev')
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
+          aws-region: us-east-1
+
+      - name: Configure AWS creds for qa1
+        if: startsWith(github.ref, 'refs/heads/qa1')
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_QA }}
+          aws-region: us-east-1
+
+      - name: Configure AWS creds for prod
+        if: startsWith(github.ref, 'refs/heads/main')
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: ${{ secrets['AWS_ROLE_TO_ASSUME_' + (github.ref_name == 'main' && 'PROD' || github.ref_name | upper)] }}
@@ -75,24 +92,13 @@ jobs:
 
       - name: Create environment-specific config
         run: |
-          PARAMS="infra/parameters/${ENV}-parameters.json"
-          mkdir -p configs
-          jq '{secrets_manager_secret_name:.Parameters.SecretsManagerSecretName, s3_bucket:.Parameters.S3BucketName, s3_root_prefix:.Parameters.S3RootPrefix}' \
-             $PARAMS > configs/config-${ENV}.json
-
-      - name: Create environment-specific config
-        run: |
-          ENV=${GITHUB_ENV##*/}
-          echo "Creating config-${ENV}.json from parameters file"
+          ENV=${ENV}
           PARAMS_FILE="infra/parameters/${ENV}-parameters.json"
-          
+          mkdir -p configs
           # Extract RBAC parameters from parameter file
           SECRET_NAME=$(jq -r '.Parameters.SecretsManagerSecretName' $PARAMS_FILE)
           S3_BUCKET=$(jq -r '.Parameters.S3BucketName' $PARAMS_FILE)
           S3_PREFIX=$(jq -r '.Parameters.S3RootPrefix' $PARAMS_FILE)
-          
-          # Create the environment-specific config file
-          mkdir -p configs
           cat > configs/config-${ENV}.json << EOF
           {
             "secrets_manager_secret_name": "${SECRET_NAME}",
