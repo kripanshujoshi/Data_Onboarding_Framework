@@ -106,7 +106,7 @@ jobs:
             exit 1
           fi
           
-          # Deploy with parameter overrides
+          # Deploy with parameter overrides - use the correct .yml extension
           aws cloudformation deploy \
             --template-file infra/cloudformation.yml \
             --stack-name data-onboarding-framework-${ENV} \
