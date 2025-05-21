@@ -68,12 +68,11 @@ def run_migrations(conn):
         
         if migration_dir is None:
             raise FileNotFoundError("Could not find migrations directory")
-            
-        migration_files = [f for f in os.listdir(migration_dir) if f.endswith('.sql')]
+              migration_files = [f for f in os.listdir(migration_dir) if f.endswith('.sql')]
         migration_files.sort()  # Sort to ensure order
         
         print(f"Found {len(migration_files)} migration files")
-          for migration_file in migration_files:
+        for migration_file in migration_files:
             print(f"Running migration: {migration_file}")
             try:
                 with open(os.path.join(migration_dir, migration_file), 'r') as f:
