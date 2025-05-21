@@ -58,7 +58,7 @@ jobs:
         if: startsWith(github.ref, 'refs/heads/main')
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
+          role-to-assume: ${{ secrets['AWS_ROLE_TO_ASSUME_' + (github.ref_name == 'main' && 'PROD' || github.ref_name | upper)] }}
           aws-region: us-east-1
 
       - name: Set variables
