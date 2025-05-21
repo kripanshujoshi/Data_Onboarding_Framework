@@ -34,11 +34,6 @@ jobs:
         run: |
           pytest --maxfail=1 --disable-warnings -q
           
-      - name: Run DB migrations
-        run: |
-          # Ensure ENV is set before this step
-          python scripts/pre_deploy.py --env ${ENV}
-          
       # Single AWS credentials configuration step with conditions
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -53,6 +48,11 @@ jobs:
           STACK_NAME="MetadataOnboarding-${ENV}"
           echo "ENV=${ENV}" >> $GITHUB_ENV
           echo "STACK_NAME=${STACK_NAME}" >> $GITHUB_ENV
+          
+      - name: Run DB migrations
+        run: |
+          # ENV variable is now set from the previous step
+          python scripts/pre_deploy.py --env ${ENV}
 
       - name: Clean up existing EB env
         run: |
