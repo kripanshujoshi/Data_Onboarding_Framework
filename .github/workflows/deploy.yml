@@ -94,6 +94,27 @@ jobs:
           # Create CloudFormation artifacts bucket
           aws s3 mb s3://${CFN_BUCKET} || true
 
+      - name: Create environment-specific config
+        run: |
+          ENV=${GITHUB_ENV##*/}
+          echo "Creating config-${ENV}.json from parameters file"
+          PARAMS_FILE="infra/parameters/${ENV}-parameters.json"
+          
+          # Extract RBAC parameters from parameter file
+          SECRET_NAME=$(jq -r '.Parameters.SecretsManagerSecretName' $PARAMS_FILE)
+          S3_BUCKET=$(jq -r '.Parameters.S3BucketName' $PARAMS_FILE)
+          S3_PREFIX=$(jq -r '.Parameters.S3RootPrefix' $PARAMS_FILE)
+          
+          # Create the environment-specific config file
+          mkdir -p configs
+          cat > configs/config-${ENV}.json << EOF
+          {
+            "secrets_manager_secret_name": "${SECRET_NAME}",
+            "s3_bucket": "${S3_BUCKET}",
+            "s3_root_prefix": "${S3_PREFIX}"
+          }
+          EOF
+
       - name: Archive and Upload Application
         run: |
           # Create unique version identifier using timestamp and commit hash
@@ -163,8 +184,9 @@ jobs:
 
       - name: Deploy with CloudFormation template
         run: |
+          # Fixed: Change file extension from .yaml to .yml to match actual file
           aws cloudformation deploy \
-            --template-file infra/cloudformation.yaml \
+            --template-file infra/cloudformation.yml \
             --stack-name ${STACK_NAME} \
             --parameter-overrides \
               ApplicationName=${APP_NAME} \
@@ -175,5 +197,9 @@ jobs:
               SolutionStackName="${SOLUTION_STACK}" \
               SourceBundleKey=${S3_KEY} \
               VersionLabel=${VERSION_LABEL} \
+              # Add parameters for RBAC and approval workflow
+              SecretsManagerSecretName=$(jq -r '.Parameters.SecretsManagerSecretName' infra/parameters/${ENV}-parameters.json) \
+              S3BucketName=$(jq -r '.Parameters.S3BucketName' infra/parameters/${ENV}-parameters.json) \
+              S3RootPrefix=$(jq -r '.Parameters.S3RootPrefix' infra/parameters/${ENV}-parameters.json) \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
