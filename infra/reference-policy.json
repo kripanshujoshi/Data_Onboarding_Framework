@@ -1,0 +1,36 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::*-eb-artifacts-*/*",
+                "arn:aws:s3:::*-eb-artifacts-*",
+                "arn:aws:s3:::*-cfn-artifacts-*/*",
+                "arn:aws:s3:::*-cfn-artifacts-*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "elasticbeanstalk:CreateApplication",
+                "elasticbeanstalk:CreateApplicationVersion",
+                "elasticbeanstalk:DescribeEnvironments",
+                "elasticbeanstalk:TerminateEnvironment"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:Deploy"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
