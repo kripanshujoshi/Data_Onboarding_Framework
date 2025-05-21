@@ -1,15 +1,22 @@
 """
 Configuration loader for Data Onboarding Framework.
 """
+import logging
 import json
 import os
-import logging
+
+from modules.logging_setup import log_function
 
 logger = logging.getLogger(__name__)
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'configs', 'config.json')
+CONFIG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    'configs',
+    'config.json'
+)
 
 
+@log_function
 def load_config():
     """
     Load and return the application configuration from JSON file.
@@ -23,6 +30,7 @@ def load_config():
     except Exception as e:
         logger.error(f"Failed to load config: {e}")
         raise
+
 
 # Load once at import
 config = load_config()

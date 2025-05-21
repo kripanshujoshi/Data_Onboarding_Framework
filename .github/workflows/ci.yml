@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ feature1 ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ dev1, qa1, main1 ]
 
 jobs:
   lint-and-test:
@@ -21,7 +21,7 @@ jobs:
           pip install -r requirements.txt
       - name: Lint with flake8
         run: |
-          flake8 .
+          flake8 --config=.flake8 .
       - name: Run tests
         run: |
           pytest --maxfail=1 --disable-warnings -q

@@ -1,10 +1,11 @@
 import json
 import logging
-from modules.config import config
 import boto3
 import psycopg2
 import pandas as pd
 from botocore.exceptions import ClientError
+from modules.config import config
+from modules.logging_setup import log_function
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ DBNAME = DB_CONFIG.get('dbname')
 PORT = DB_CONFIG.get('port')
 
 
+@log_function
 def get_db_credentials() -> dict:
     """
     Retrieve database credentials from AWS Secrets Manager.
@@ -34,6 +36,7 @@ def get_db_credentials() -> dict:
         raise Exception(f"Error fetching secrets: {e}")
 
 
+@log_function
 def check_db_connection() -> psycopg2.extensions.connection:
     """
     Establish and return a new database connection.
@@ -54,6 +57,7 @@ def check_db_connection() -> psycopg2.extensions.connection:
         raise Exception(f"Failed to connect to database: {e}")
 
 
+@log_function
 def fetch_dataframe(query: str, params=None) -> pd.DataFrame:
     """
     Execute a SELECT query and return results as a pandas DataFrame.
@@ -73,6 +77,7 @@ def fetch_dataframe(query: str, params=None) -> pd.DataFrame:
         conn.close()
 
 
+@log_function
 def insert_statements_into_postgres(sql_script: str) -> bool:
     """
     Execute DDL/DML SQL script against the database.
@@ -91,6 +96,7 @@ def insert_statements_into_postgres(sql_script: str) -> bool:
         conn.close()
 
 
+@log_function
 def check_existence(src_nm: str, dataset_nm: str, src_table_nm: str) -> bool:
     """
     Check if configuration entries already exist in the database.
@@ -100,15 +106,30 @@ def check_existence(src_nm: str, dataset_nm: str, src_table_nm: str) -> bool:
     try:
         with conn.cursor() as cur:
             queries = [
-                ("SELECT 1 FROM app_mgmt.sys_config_dataset_info WHERE src_nm = %s AND dataset_nm = %s", (src_nm, dataset_nm)),
-                ("SELECT 1 FROM app_mgmt.sys_config_table_info WHERE src_nm = %s AND dataset_nm = %s", (src_nm, dataset_nm)),
-                ("SELECT 1 FROM app_mgmt.sys_config_table_field_info WHERE src_nm = %s AND src_table_nm = %s", (src_nm, src_table_nm)),
-                ("SELECT 1 FROM app_mgmt.sys_config_pre_proc_info WHERE src_nm = %s AND dataset_nm = %s", (src_nm, dataset_nm)),
+                (
+                    "SELECT 1 FROM app_mgmt.sys_config_dataset_info WHERE src_nm = %s AND dataset_nm = %s",
+                    (src_nm, dataset_nm),
+                ),
+                (
+                    "SELECT 1 FROM app_mgmt.sys_config_table_info WHERE src_nm = %s AND dataset_nm = %s",
+                    (src_nm, dataset_nm),
+                ),
+                (
+                    "SELECT 1 FROM app_mgmt.sys_config_table_field_info WHERE src_nm = %s AND src_table_nm = %s",
+                    (src_nm, src_table_nm),
+                ),
+                (
+                    "SELECT 1 FROM app_mgmt.sys_config_pre_proc_info WHERE src_nm = %s AND dataset_nm = %s",
+                    (src_nm, dataset_nm),
+                ),
             ]
             for q, params in queries:
                 cur.execute(q, params)
                 if cur.fetchone():
-                    logger.info(f"Configuration exists for src={src_nm}, dataset={dataset_nm}, table={src_table_nm}")
+                    logger.info(
+                        f"Configuration exists for src={src_nm}, dataset={dataset_nm}, "
+                        f"table={src_table_nm}"
+                    )
                     return True
             return False
     except Exception as e:
