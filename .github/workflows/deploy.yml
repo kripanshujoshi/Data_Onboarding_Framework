@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - dev
-      - qa
-      - main
+      - qa1
+      - main1
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
     permissions:
       id-token: write
       contents: read
@@ -49,50 +51,129 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
           aws-region: us-east-1
 
-      - name: Deploy CloudFormation stack
+      - name: Set variables
         run: |
           BRANCH=${GITHUB_REF##*/}
-          if [[ "$BRANCH" == "main" ]]; then
-            ENV=prod
+          if [[ "$BRANCH" == "main" ]]; then ENV=prod; else ENV=$BRANCH; fi
+          STACK_NAME="MetadataOnboarding-${ENV}"
+          
+          # Extract application name from parameters file for dynamic bucket naming
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          APP_NAME_BASE=$(echo $APP_NAME | sed 's/-dev$\|-qa$\|-prod$//')
+          
+          S3_BUCKET="${APP_NAME_BASE}-eb-artifacts-${ENV}"
+          CFN_BUCKET="${APP_NAME_BASE}-cfn-artifacts-${ENV}"
+          
+          echo "ENV=$ENV" >> $GITHUB_ENV
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+          echo "EB_S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
+          echo "CFN_BUCKET=$CFN_BUCKET" >> $GITHUB_ENV
+
+      - name: Clean up existing EB environments
+        run: |
+          # Check if our environment already exists, but keep the application
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          ENV_NAME=$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json)
+          
+          echo "Checking if environment '$ENV_NAME' exists..."
+          
+          # Try to terminate the environment if it exists
+          if aws elasticbeanstalk describe-environments --application-name $APP_NAME --environment-names $ENV_NAME --include-deleted=false 2>/dev/null | jq -e '.Environments[0]' > /dev/null; then
+            echo "Environment '$ENV_NAME' exists. Terminating it..."
+            aws elasticbeanstalk terminate-environment --environment-name $ENV_NAME
+            echo "Waiting 45 seconds for environment termination to complete..."
+            sleep 45
           else
-            ENV=$BRANCH
+            echo "Environment '$ENV_NAME' does not exist or cannot be accessed."
           fi
-          PARAM_FILE="infra/parameters/${ENV}-parameters.json"
-          STACK_NAME="DataOnboarding-${ENV}"
+
+      - name: Create S3 buckets
+        run: |
+          # Create EB artifacts bucket first
+          aws s3 mb s3://${EB_S3_BUCKET} || true
+          # Create CloudFormation artifacts bucket
+          aws s3 mb s3://${CFN_BUCKET} || true
+
+      - name: Archive and Upload Application
+        run: |
+          # Create unique version identifier using timestamp and commit hash
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          VERSION_LABEL="v${TIMESTAMP}-${COMMIT_HASH}"
+          S3_KEY="app-${VERSION_LABEL}.zip"
+          
+          # Create versioned zip file directly (include sample files that were previously excluded)
+          zip -r ${S3_KEY} . \
+            -x ".git*" \
+            -x ".github/*" \
+            -x ".flake8" \
+            -x ".gitignore" \
+            -x "README.md" \
+            -x "Sample_Files/*" \
+            -x "infra/*" \
+            -x "tests/*" \
+          
+          # Upload the application bundle to S3 with version in filename
+          aws s3 cp ${S3_KEY} s3://${EB_S3_BUCKET}/${S3_KEY}
+          
+          # Save the app version label and S3 key for later use
+          echo "VERSION_LABEL=${VERSION_LABEL}" >> $GITHUB_ENV
+          echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
+
+      - name: Create Elastic Beanstalk Application
+        run: |
+          # Extract application name from parameters
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          
+          # First, create the application (this is required before creating a version)
+          echo "Creating application '$APP_NAME'..."
+          aws elasticbeanstalk create-application \
+            --application-name ${APP_NAME} \
+            --description "Created from GitHub Actions on $(date)" \
+            || echo "Application may already exist or will be created by CloudFormation"
+            
+          # Now create the application version after ensuring the application exists
+          echo "Creating application version '${VERSION_LABEL}'..."
+          aws elasticbeanstalk create-application-version \
+            --application-name ${APP_NAME} \
+            --version-label ${VERSION_LABEL} \
+            --description "Deployed from GitHub Actions on $(date)" \
+            --source-bundle S3Bucket=${EB_S3_BUCKET},S3Key=${S3_KEY} \
+            --process
+            
+          # Verify that the version was created successfully
+          echo "Verifying application version exists..."
+          aws elasticbeanstalk describe-application-versions \
+            --application-name ${APP_NAME} \
+            --version-labels ${VERSION_LABEL}
+
+      - name: Set CloudFormation parameters
+        run: |
+          # Extract parameters from JSON file directly
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          ENV_NAME=$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json)
+          INSTANCE_TYPE=$(jq -r '.Parameters.InstanceType' infra/parameters/${ENV}-parameters.json)
+          KEY_NAME=$(jq -r '.Parameters.KeyName' infra/parameters/${ENV}-parameters.json)
+          SOLUTION_STACK=$(jq -r '.Parameters.SolutionStackName' infra/parameters/${ENV}-parameters.json)
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+          echo "ENV_NAME=$ENV_NAME" >> $GITHUB_ENV
+          echo "INSTANCE_TYPE=$INSTANCE_TYPE" >> $GITHUB_ENV
+          echo "KEY_NAME=$KEY_NAME" >> $GITHUB_ENV
+          echo "SOLUTION_STACK=$SOLUTION_STACK" >> $GITHUB_ENV
+
+      - name: Deploy with CloudFormation template
+        run: |
           aws cloudformation deploy \
             --template-file infra/cloudformation.yaml \
             --stack-name ${STACK_NAME} \
-            --parameter-overrides file://${PARAM_FILE} \
-            --capabilities CAPABILITY_NAMED_IAM
-
-      - name: Archive application
-        run: zip -r app.zip . -x "**/.git*" "**/.github/*"
-
-      - name: Upload artifact to S3
-        run: |
-          S3_KEY="app_${GITHUB_SHA}.zip"
-          aws s3 cp app.zip s3://${{ secrets.EB_S3_BUCKET }}/${S3_KEY}
-          echo "S3_KEY=${S3_KEY}" >> $GITHUB_ENV
-
-      - name: Create application version
-        run: |
-          aws elasticbeanstalk create-application-version \
-            --application-name DataOnboardingApp \
-            --version-label ${{ github.sha }} \
-            --source-bundle S3Bucket=${{ secrets.EB_S3_BUCKET }},S3Key=${{ env.S3_KEY }}
-
-      - name: Set EB environment name
-        run: |
-          if [[ "${GITHUB_REF##*/}" == 'dev' ]]; then
-            echo "EB_ENV_NAME=${{ secrets.EB_ENV_DEV }}" >> $GITHUB_ENV
-          elif [[ "${GITHUB_REF##*/}" == 'qa' ]]; then
-            echo "EB_ENV_NAME=${{ secrets.EB_ENV_QA }}" >> $GITHUB_ENV
-          else
-            echo "EB_ENV_NAME=${{ secrets.EB_ENV_PROD }}" >> $GITHUB_ENV
-          fi
-
-      - name: Update environment
-        run: |
-          aws elasticbeanstalk update-environment \
-            --environment-name ${{ env.EB_ENV_NAME }} \
-            --version-label ${{ github.sha }}
+            --parameter-overrides \
+              ApplicationName=${APP_NAME} \
+              EnvironmentName=${ENV_NAME} \
+              InstanceType=${INSTANCE_TYPE} \
+              KeyName=${KEY_NAME} \
+              DeployEnvironment=${ENV} \
+              SolutionStackName="${SOLUTION_STACK}" \
+              SourceBundleKey=${S3_KEY} \
+              VersionLabel=${VERSION_LABEL} \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset

@@ -1,9 +1,10 @@
 {
   "Parameters": {
-    "ApplicationName": "DataOnboardingApp",
-    "EnvironmentName": "DataOnboardingEnv-prod",
+    "ApplicationName": "metadataonboardingapp-prod",
+    "EnvironmentName": "metadataonboardingenv-prod",
     "InstanceType": "t3.small",
-    "KeyName": "YOUR_EC2_KEYPAIR",
-    "DeployEnvironment": "prod"
+    "KeyName": "data-onboarding-framework-prod",
+    "DeployEnvironment": "prod",
+    "SolutionStackName": "64bit Amazon Linux 2023 v4.5.1 running Python 3.13"
   }
 }

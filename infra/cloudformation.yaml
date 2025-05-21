@@ -4,7 +4,9 @@ Description: Elastic Beanstalk deployment stack for Data Onboarding Framework
 Parameters:
   ApplicationName:
     Type: String
-    Default: DataOnboardingApp
+    Default: dataonboardingapp
+    AllowedPattern: '^[a-z0-9-]+$'
+    ConstraintDescription: 'Must be lowercase letters, numbers, and hyphens only'
   EnvironmentName:
     Type: String
     Default: DataOnboardingEnv
@@ -13,7 +15,6 @@ Parameters:
     Default: t3.small
   KeyName:
     Type: AWS::EC2::KeyPair::KeyName
-
   DeployEnvironment:
     Type: String
     AllowedValues:
@@ -21,6 +22,18 @@ Parameters:
       - qa
       - prod
     Default: dev
+  SolutionStackName:
+    Type: String
+    Default: "64bit Amazon Linux 2023 v4.5.1 running Python 3.11"
+    Description: EB platform solution stack name (e.g. 64bit Amazon Linux 2023 v4.5.1 running Python 3.11)
+  SourceBundleKey:
+    Type: String
+    Default: app.zip
+    Description: S3 key of the application bundle in the artifacts bucket
+  VersionLabel:
+    Type: String
+    Default: "initial-version"
+    Description: Version label for the Elastic Beanstalk application version
 
 Resources:
   ServiceRole:
@@ -37,45 +50,51 @@ Resources:
         - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
         - arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
         - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      Policies:
+        - PolicyName: SecretManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: "*"
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles: [ !Ref ServiceRole ]
 
-  Application:
-    Type: AWS::ElasticBeanstalk::Application
-    Properties:
-      ApplicationName: !Ref ApplicationName
-
-  S3Bucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub '${ApplicationName}-eb-artifacts-${AWS::AccountId}'
-
-  InitialVersion:
-    Type: AWS::ElasticBeanstalk::ApplicationVersion
-    Properties:
-      ApplicationName: !Ref Application
-      VersionLabel: initial
-      SourceBundle:
-        S3Bucket: !Ref S3Bucket
-        S3Key: initial.zip
-
   Environment:
     Type: AWS::ElasticBeanstalk::Environment
     Properties:
+      ApplicationName: !Ref ApplicationName
       EnvironmentName: !Ref EnvironmentName
-      ApplicationName: !Ref Application
-      PlatformArn: arn:aws:elasticbeanstalk:${AWS::Region}::platform/Python 3.8 running on 64bit Amazon Linux 2
+      SolutionStackName: !Ref SolutionStackName
+      VersionLabel: !Ref VersionLabel
       OptionSettings:
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: InstanceType
           Value: !Ref InstanceType
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: EnvironmentType
+          Value: LoadBalanced
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: LoadBalancerType
+          Value: application
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: IamInstanceProfile
           Value: !Ref InstanceProfile
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: LOG_FILE
+          Value: /var/log/app.log
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: PORT
+          Value: 8000
 
 Outputs:
   EnvURL:
     Value: !GetAtt Environment.EndpointURL
+  EnvironmentName:
+    Description: "Elastic Beanstalk environment name"
+    Value: !Ref EnvironmentName
