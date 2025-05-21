@@ -5,6 +5,9 @@
     "InstanceType": "t3.small",
     "KeyName": "data-onboarding-framework-qa",
     "DeployEnvironment": "qa",
-    "SolutionStackName": "64bit Amazon Linux 2023 v4.5.1 running Python 3.13"
+    "SolutionStackName": "64bit Amazon Linux 2023 v4.5.1 running Python 3.13",
+    "SecretsManagerSecretName": "data-onboarding-framework/users-qa",
+    "S3BucketName": "data-onboarding-framework-storage-qa",
+    "S3RootPrefix": "onboarding_requests"
   }
 }
