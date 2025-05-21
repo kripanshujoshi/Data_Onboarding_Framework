@@ -84,6 +84,22 @@ jobs:
           # Just create the zip package
           zip -r application.zip . -x "*.git*" -x "infra/*" -x "*.github*" -x "*.venv*" -x "*.vscode*"
       
+      # Add debug info to see what files are available 
+      - name: Debug CloudFormation template location
+        run: |
+          ls -la infra/
+          echo "Looking for CloudFormation template at: infra/cloudformation.yml"
+          if [ -f "infra/cloudformation.yml" ]; then
+            echo "Found .yml file"
+          else
+            echo "ERROR: .yml file not found"
+          fi
+          if [ -f "infra/cloudformation.yaml" ]; then
+            echo "Found .yaml file"
+          else
+            echo "ERROR: .yaml file not found"
+          fi
+      
       - name: Deploy to AWS CloudFormation
         run: |
           ENV=${{ env.DEPLOY_ENV }}
@@ -106,7 +122,13 @@ jobs:
             exit 1
           fi
           
-          # Deploy with parameter overrides - use the correct .yml extension
+          # Explicitly check if the file exists
+          if [ ! -f "infra/cloudformation.yml" ]; then
+            echo "ERROR: CloudFormation template file not found at infra/cloudformation.yml"
+            exit 1
+          fi
+          
+          # Deploy with parameter overrides
           aws cloudformation deploy \
             --template-file infra/cloudformation.yml \
             --stack-name data-onboarding-framework-${ENV} \
