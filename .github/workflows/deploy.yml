@@ -28,16 +28,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run tests
+          pip install -r requirements.txt      - name: Run tests
         run: |
           pytest --maxfail=1 --disable-warnings -q
-          
-      - name: Run DB migrations
-        run: |
-          # Ensure ENV is set before this step
-          python scripts/pre_deploy.py --env ${ENV}
           
       # Single AWS credentials configuration step with conditions
       - name: Configure AWS credentials
@@ -53,6 +46,11 @@ jobs:
           STACK_NAME="MetadataOnboarding-${ENV}"
           echo "ENV=${ENV}" >> $GITHUB_ENV
           echo "STACK_NAME=${STACK_NAME}" >> $GITHUB_ENV
+          
+      - name: Run DB migrations
+        run: |
+          # ENV variable is now set from the previous step
+          python scripts/pre_deploy.py --env ${ENV}
 
       - name: Clean up existing EB env
         run: |
