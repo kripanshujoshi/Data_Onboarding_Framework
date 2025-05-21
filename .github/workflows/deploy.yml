@@ -96,7 +96,7 @@ jobs:
 
       - name: Create environment-specific config
         run: |
-          ENV=${GITHUB_ENV##*/}
+          # Use ENV variable that was set earlier, not GITHUB_ENV
           echo "Creating config-${ENV}.json from parameters file"
           PARAMS_FILE="infra/parameters/${ENV}-parameters.json"
           
@@ -184,6 +184,11 @@ jobs:
 
       - name: Deploy with CloudFormation template
         run: |
+          # Extract RBAC parameters from parameter file
+          SECRET_NAME=$(jq -r '.Parameters.SecretsManagerSecretName' infra/parameters/${ENV}-parameters.json)
+          S3_BUCKET_NAME=$(jq -r '.Parameters.S3BucketName' infra/parameters/${ENV}-parameters.json)
+          S3_ROOT_PREFIX=$(jq -r '.Parameters.S3RootPrefix' infra/parameters/${ENV}-parameters.json)
+          
           # Fixed: Change file extension from .yaml to .yml to match actual file
           aws cloudformation deploy \
             --template-file infra/cloudformation.yml \
@@ -197,9 +202,8 @@ jobs:
               SolutionStackName="${SOLUTION_STACK}" \
               SourceBundleKey=${S3_KEY} \
               VersionLabel=${VERSION_LABEL} \
-              # Add parameters for RBAC and approval workflow
-              SecretsManagerSecretName=$(jq -r '.Parameters.SecretsManagerSecretName' infra/parameters/${ENV}-parameters.json) \
-              S3BucketName=$(jq -r '.Parameters.S3BucketName' infra/parameters/${ENV}-parameters.json) \
-              S3RootPrefix=$(jq -r '.Parameters.S3RootPrefix' infra/parameters/${ENV}-parameters.json) \
+              SecretsManagerSecretName=${SECRET_NAME} \
+              S3BucketName=${S3_BUCKET_NAME} \
+              S3RootPrefix=${S3_ROOT_PREFIX} \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
