@@ -1,0 +1,143 @@
+name: Deploy to Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - dev
+      - qa1
+      - main1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'prod' || github.ref_name }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=1 --disable-warnings -q
+          
+      # Single AWS credentials configuration step with conditions
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ github.ref_name == 'dev' && secrets.AWS_ROLE_TO_ASSUME_DEV || github.ref_name == 'qa1' && secrets.AWS_ROLE_TO_ASSUME_QA || github.ref_name == 'main' && secrets.AWS_ROLE_TO_ASSUME_PROD }}
+          aws-region: us-east-1
+
+      - name: Set variables
+        run: |
+          BRANCH=${GITHUB_REF##*/}
+          ENV=${BRANCH/main/prod}
+          STACK_NAME="MetadataOnboarding-${ENV}"
+          echo "ENV=${ENV}" >> $GITHUB_ENV
+          echo "STACK_NAME=${STACK_NAME}" >> $GITHUB_ENV
+          
+      - name: Run DB migrations
+        run: |
+          # ENV variable is now set from the previous step
+          python scripts/pre_deploy.py --env ${ENV}
+
+      - name: Clean up existing EB env
+        run: |
+          APP=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          ENV_NAME=$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json)
+          echo "Terminating $ENV_NAME if exists..."
+          until aws elasticbeanstalk describe-environments \
+                   --application-name $APP \
+                   --environment-names $ENV_NAME \
+                   --include-deleted=false \
+                   | jq -e '.Environments | length == 0'; do
+            aws elasticbeanstalk terminate-environment --environment-name $ENV_NAME || true
+            sleep 15
+          done
+
+      - name: Create S3 buckets
+        run: |
+          APP=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          BASE=$(echo $APP | sed 's/-dev$|-qa$|-prod$//')
+          aws s3 mb s3://${BASE}-eb-artifacts-${ENV} || true
+          aws s3 mb s3://${BASE}-cfn-artifacts-${ENV} || true
+
+      - name: Create environment-specific config
+        run: |
+          ENV=${ENV}
+          PARAMS_FILE="infra/parameters/${ENV}-parameters.json"
+          mkdir -p configs
+          # Extract RBAC parameters from parameter file
+          SECRET_NAME=$(jq -r '.Parameters.SecretsManagerSecretName' $PARAMS_FILE)
+          S3_BUCKET=$(jq -r '.Parameters.S3BucketName' $PARAMS_FILE)
+          S3_PREFIX=$(jq -r '.Parameters.S3RootPrefix' $PARAMS_FILE)
+          cat > configs/config-${ENV}.json << EOF
+          {
+            "secrets_manager_secret_name": "${SECRET_NAME}",
+            "s3_bucket": "${S3_BUCKET}",
+            "s3_root_prefix": "${S3_PREFIX}"
+          }
+          EOF
+
+      - name: Archive and Upload Application
+        run: |
+          TS=$(date +%Y%m%d%H%M%S)
+          CH=$(git rev-parse --short HEAD)
+          LABEL="v${TS}-${CH}"
+          KEY="app-${LABEL}.zip"
+          zip -r $KEY . -x ".git*" -x ".github/*" -x "infra/*" -x "tests/*" -x "Sample_Files/*"
+          aws s3 cp $KEY s3://${BASE}-eb-artifacts-${ENV}/$KEY
+          echo "VERSION_LABEL=$LABEL" >> $GITHUB_ENV
+          echo "S3_KEY=$KEY" >> $GITHUB_ENV
+
+      - name: Create EB Application & Version
+        run: |
+          APP=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          aws elasticbeanstalk create-application --application-name $APP || true
+          aws elasticbeanstalk create-application-version \
+            --application-name $APP \
+            --version-label $VERSION_LABEL \
+            --source-bundle S3Bucket=${BASE}-eb-artifacts-${ENV},S3Key=${S3_KEY} \
+            --process
+
+      - name: Set CloudFormation parameters
+        run: |
+          P="infra/parameters/${ENV}-parameters.json"
+          APP=$(jq -r '.Parameters.ApplicationName' $P)
+          ENV_NAME=$(jq -r '.Parameters.EnvironmentName' $P)
+          INSTANCE=$(jq -r '.Parameters.InstanceType' $P)
+          KEYN=$(jq -r '.Parameters.KeyName' $P)
+          STACK_NAME=${STACK_NAME}
+          SECRET=$(jq -r '.Parameters.SecretsManagerSecretName' $P)
+          SB=$(jq -r '.Parameters.S3BucketName' $P)
+          SR=$(jq -r '.Parameters.S3RootPrefix' $P)
+          aws cloudformation deploy \
+            --template-file infra/cloudformation.yml \
+            --stack-name $STACK_NAME \
+            --parameter-overrides \
+              ApplicationName=$APP \
+              EnvironmentName=$ENV_NAME \
+              InstanceType=$INSTANCE \
+              KeyName=$KEYN \
+              DeployEnvironment=$ENV \
+              SolutionStackName="$(jq -r '.Parameters.SolutionStackName' $P)" \
+              SourceBundleKey=$S3_KEY \
+              VersionLabel=$VERSION_LABEL \
+              SecretsManagerSecretName=$SECRET \
+              S3BucketName=$SB \
+              S3RootPrefix=$SR \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
