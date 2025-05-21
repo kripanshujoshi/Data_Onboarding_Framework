@@ -32,7 +32,9 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest --maxfail=1 --disable-warnings -q      - name: Run DB migrations
+          pytest --maxfail=1 --disable-warnings -q
+          
+      - name: Run DB migrations
         run: |
           # Ensure ENV is set before this step
           python scripts/pre_deploy.py --env ${ENV}
