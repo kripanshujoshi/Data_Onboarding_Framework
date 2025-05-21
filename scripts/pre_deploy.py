@@ -65,10 +65,10 @@ def run_migrations(conn):
                 migration_dir = directory
                 print(f"Using migration directory: {migration_dir}")
                 break
-        
-        if migration_dir is None:
+          if migration_dir is None:
             raise FileNotFoundError("Could not find migrations directory")
-              migration_files = [f for f in os.listdir(migration_dir) if f.endswith('.sql')]
+            
+        migration_files = [f for f in os.listdir(migration_dir) if f.endswith('.sql')]
         migration_files.sort()  # Sort to ensure order
         
         print(f"Found {len(migration_files)} migration files")
