@@ -68,5 +68,8 @@
             "name": "sys_config_table_field_info",
             "columns": ["src_nm", "src_table_nm", "field_nm", "field_posn_nbr", "datatype_nm", "datatype_size_val", "datatype_scale_val", "key_ind", "check_table", "field_desc", "dprct_ind", "partitn_ind", "sort_key_ind", "dist_key_ind", "proc_stage_cd", "catlg_flg", "dblqt_repl_flg", "delta_key_ind"]
         }
-    ]
+    ],
+    "secrets_manager_secret_name": "data-onboarding-framework/users",
+    "s3_bucket": "data-onboarding-framework-storage",
+    "s3_root_prefix": "onboarding_requests"
 }

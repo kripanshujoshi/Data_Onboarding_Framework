@@ -5,7 +5,8 @@ psycopg2-binary
 pandas
 sqlglot
 openpyxl
-boto3
+boto3>=1.28.0
 pytest
 flake8
+bcrypt>=4.0.1
 

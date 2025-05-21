@@ -1,0 +1,205 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Data Onboarding Framework - CloudFormation Template'
+
+Parameters:
+  ApplicationName:
+    Type: String
+    Description: Name of the Elastic Beanstalk application
+  
+  EnvironmentName:
+    Type: String
+    Description: Name of the Elastic Beanstalk environment
+  
+  InstanceType:
+    Type: String
+    Default: t3.small
+    Description: EC2 instance type for the Elastic Beanstalk environment
+  
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair to enable SSH access
+  
+  DeployEnvironment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - qa
+      - prod
+    Description: Deployment environment (dev, qa, prod)
+  
+  SolutionStackName:
+    Type: String
+    Description: Elastic Beanstalk solution stack name
+  
+  SecretsManagerSecretName:
+    Type: String
+    Description: Name of the Secret in AWS Secrets Manager for user authentication
+  
+  S3BucketName:
+    Type: String
+    Description: Name of the S3 bucket for storing SQL scripts
+  
+  S3RootPrefix:
+    Type: String
+    Default: onboarding_requests
+    Description: Root prefix for SQL scripts in S3
+
+Resources:
+  # Create the S3 bucket for SQL scripts
+  S3StorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3BucketName
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Environment
+          Value: !Ref DeployEnvironment
+  
+  # Create the Secrets Manager secret for user authentication
+  UserAuthSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Ref SecretsManagerSecretName
+      Description: !Sub "User authentication data for ${ApplicationName}"
+      SecretString: '{"users":[]}'
+      Tags:
+        - Key: Environment
+          Value: !Ref DeployEnvironment
+  
+  # IAM role for Elastic Beanstalk instance profile
+  AppInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
+      Path: /
+  
+  # Custom policy for app-specific permissions
+  AppPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "${ApplicationName}-policy"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Allow the app to read and write to the S3 bucket
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:ListBucket
+            Resource:
+              - !Sub "arn:aws:s3:::${S3BucketName}"
+              - !Sub "arn:aws:s3:::${S3BucketName}/*"
+          # Allow the app to access Secrets Manager
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:PutSecretValue
+              - secretsmanager:UpdateSecret
+            Resource:
+              - !GetAtt UserAuthSecret.Arn
+          # Allow access to the RDS secret (already defined in config)
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource:
+              - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:rds!db-*"
+      Roles:
+        - !Ref AppInstanceRole
+  
+  # Instance profile for Elastic Beanstalk
+  AppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref AppInstanceRole
+  
+  # Elastic Beanstalk application
+  ElasticBeanstalkApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: !Ref ApplicationName
+      Description: "Data Onboarding Framework Application"
+  
+  # Elastic Beanstalk environment
+  ElasticBeanstalkEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      EnvironmentName: !Ref EnvironmentName
+      ApplicationName: !Ref ApplicationName
+      SolutionStackName: !Ref SolutionStackName
+      OptionSettings:
+        # EC2 instance configuration
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: InstanceType
+          Value: !Ref InstanceType
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: IamInstanceProfile
+          Value: !GetAtt AppInstanceProfile.Arn
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: EC2KeyName
+          Value: !Ref KeyName
+        
+        # Environment variables - Add these settings
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: DEPLOY_ENV
+          Value: !Ref DeployEnvironment
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: SECRETS_MANAGER_SECRET_NAME
+          Value: !Ref SecretsManagerSecretName
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: S3_BUCKET_NAME
+          Value: !Ref S3BucketName
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: S3_ROOT_PREFIX
+          Value: !Ref S3RootPrefix
+        
+        # Application deployment settings
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: DeploymentPolicy
+          Value: Rolling
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: BatchSize
+          Value: '30'
+        - Namespace: aws:elasticbeanstalk:command
+          OptionName: BatchSizeType
+          Value: Percentage
+        
+        # Auto scaling
+        - Namespace: aws:autoscaling:asg
+          OptionName: MinSize
+          Value: '1'
+        - Namespace: aws:autoscaling:asg
+          OptionName: MaxSize
+          Value: '2'
+
+Outputs:
+  EnvironmentURL:
+    Description: URL of the Elastic Beanstalk environment
+    Value: !GetAtt ElasticBeanstalkEnvironment.EndpointURL
+  
+  S3BucketName:
+    Description: Name of the S3 bucket created for SQL script storage
+    Value: !Ref S3BucketName
+  
+  SecretsManagerSecretName:
+    Description: Name of the Secrets Manager secret for user authentication
+    Value: !Ref SecretsManagerSecretName

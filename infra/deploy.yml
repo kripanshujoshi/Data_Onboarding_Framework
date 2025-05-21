@@ -1,0 +1,147 @@
+name: Deploy Data Onboarding Framework
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - qa
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set environment based on branch or input
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "DEPLOY_ENV=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+          else
+            if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+              echo "DEPLOY_ENV=prod" >> $GITHUB_ENV
+            elif [ "${{ github.ref }}" == "refs/heads/qa" ]; then
+              echo "DEPLOY_ENV=qa" >> $GITHUB_ENV
+            else
+              echo "DEPLOY_ENV=dev" >> $GITHUB_ENV
+            fi
+          fi
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install boto3 awscli
+      
+      - name: Create environment-specific config
+        run: |
+          ENV=${{ env.DEPLOY_ENV }}
+          echo "Creating config-${ENV}.json from parameters file"
+          PARAMS_FILE="infra/parameters/${ENV}-parameters.json"
+          
+          # Extract parameters and create environment-specific config
+          SECRET_NAME=$(jq -r '.Parameters.SecretsManagerSecretName' $PARAMS_FILE)
+          S3_BUCKET=$(jq -r '.Parameters.S3BucketName' $PARAMS_FILE)
+          S3_PREFIX=$(jq -r '.Parameters.S3RootPrefix' $PARAMS_FILE)
+          
+          # Create the environment-specific config file
+          cat > configs/config-${ENV}.json << EOF
+          {
+            "secrets_manager_secret_name": "${SECRET_NAME}",
+            "s3_bucket": "${S3_BUCKET}",
+            "s3_root_prefix": "${S3_PREFIX}"
+          }
+          EOF
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Package application
+        run: |
+          mkdir -p .ebextensions
+          cat > .ebextensions/01_packages.config << EOF
+          packages:
+            yum:
+              python3-devel: []
+              gcc: []
+          
+          commands:
+            01_install_dependencies:
+              command: "pip install boto3 bcrypt"
+          EOF
+          
+          zip -r application.zip . -x "*.git*" -x "infra/*" -x "*.github*" -x "*.venv*" -x "*.vscode*"
+      
+      - name: Deploy to AWS CloudFormation
+        run: |
+          ENV=${{ env.DEPLOY_ENV }}
+          PARAMS_FILE="infra/parameters/${ENV}-parameters.json"
+          
+          # Make sure the parameter file has all required parameters
+          # Validate that SecretsManagerSecretName, S3BucketName, and S3RootPrefix exist
+          if ! jq -e '.Parameters.SecretsManagerSecretName' $PARAMS_FILE > /dev/null; then
+            echo "ERROR: SecretsManagerSecretName is missing in parameter file"
+            exit 1
+          fi
+          
+          if ! jq -e '.Parameters.S3BucketName' $PARAMS_FILE > /dev/null; then
+            echo "ERROR: S3BucketName is missing in parameter file"
+            exit 1
+          fi
+          
+          if ! jq -e '.Parameters.S3RootPrefix' $PARAMS_FILE > /dev/null; then
+            echo "ERROR: S3RootPrefix is missing in parameter file"
+            exit 1
+          fi
+          
+          # Deploy with parameter overrides
+          aws cloudformation deploy \
+            --template-file infra/cloudformation.yml \
+            --stack-name data-onboarding-framework-${ENV} \
+            --parameter-overrides file://${PARAMS_FILE} \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset
+      
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          ENV=${{ env.DEPLOY_ENV }}
+          APP_NAME=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          ENV_NAME=$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json)
+          
+          aws elasticbeanstalk create-application-version \
+            --application-name ${APP_NAME} \
+            --version-label app-${ENV}-${{ github.run_number }} \
+            --source-bundle S3Bucket=elasticbeanstalk-${AWS::Region}-${AWS::AccountId},S3Key=application.zip
+          
+          aws elasticbeanstalk update-environment \
+            --environment-name ${ENV_NAME} \
+            --version-label app-${ENV}-${{ github.run_number }}
+      
+      - name: Output environment URL
+        run: |
+          ENV=${{ env.DEPLOY_ENV }}
+          ENV_NAME=$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json)
+          URL=$(aws elasticbeanstalk describe-environments --environment-names ${ENV_NAME} --query "Environments[0].CNAME" --output text)
+          echo "Application deployed to: http://${URL}"
