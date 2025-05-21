@@ -80,6 +80,27 @@ jobs:
           jq '{secrets_manager_secret_name:.Parameters.SecretsManagerSecretName, s3_bucket:.Parameters.S3BucketName, s3_root_prefix:.Parameters.S3RootPrefix}' \
              $PARAMS > configs/config-${ENV}.json
 
+      - name: Create environment-specific config
+        run: |
+          ENV=${GITHUB_ENV##*/}
+          echo "Creating config-${ENV}.json from parameters file"
+          PARAMS_FILE="infra/parameters/${ENV}-parameters.json"
+          
+          # Extract RBAC parameters from parameter file
+          SECRET_NAME=$(jq -r '.Parameters.SecretsManagerSecretName' $PARAMS_FILE)
+          S3_BUCKET=$(jq -r '.Parameters.S3BucketName' $PARAMS_FILE)
+          S3_PREFIX=$(jq -r '.Parameters.S3RootPrefix' $PARAMS_FILE)
+          
+          # Create the environment-specific config file
+          mkdir -p configs
+          cat > configs/config-${ENV}.json << EOF
+          {
+            "secrets_manager_secret_name": "${SECRET_NAME}",
+            "s3_bucket": "${S3_BUCKET}",
+            "s3_root_prefix": "${S3_PREFIX}"
+          }
+          EOF
+
       - name: Archive and Upload Application
         run: |
           TS=$(date +%Y%m%d%H%M%S)
