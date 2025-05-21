@@ -88,27 +88,17 @@ config_manager = ConfigManager()
 
 
 def get_config():
-    """
-    Get configuration with environment variable overrides
-    """
-    # Load base configuration from file
-    with open('configs/config.json', 'r') as config_file:
-        config = json.load(config_file)
-    
-    # Override with environment variables if available
-    env_vars = {
+    """Load base config and override with EB environment variables."""
+    with open('configs/config.json') as f:
+        cfg = json.load(f)
+    env_map = {
         'SECRETS_MANAGER_SECRET_NAME': 'secrets_manager_secret_name',
-        'S3_BUCKET_NAME': 's3_bucket',
-        'S3_ROOT_PREFIX': 's3_root_prefix',
-        'DEPLOY_ENV': 'environment'
+        'S3_BUCKET_NAME':               's3_bucket',
+        'S3_ROOT_PREFIX':              's3_root_prefix',
+        'DEPLOY_ENV':                  'environment'
     }
-    
-    for env_var, config_key in env_vars.items():
-        if env_var in os.environ:
-            config[config_key] = os.environ[env_var]
-    
-    # Ensure environment is set (default to dev)
-    if 'environment' not in config:
-        config['environment'] = os.environ.get('DEPLOY_ENV', 'dev')
-    
-    return config
+    for ev, key in env_map.items():
+        if ev in os.environ:
+            cfg[key] = os.environ[ev]
+    cfg.setdefault('environment', os.getenv('DEPLOY_ENV', 'dev'))
+    return cfg
