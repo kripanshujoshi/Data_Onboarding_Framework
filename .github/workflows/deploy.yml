@@ -184,9 +184,9 @@ jobs:
           # Use the environment variable set in the previous step
           echo "Uploading to S3 bucket: $S3_ARTIFACTS_BUCKET"
           aws s3 cp $KEY "s3://$S3_ARTIFACTS_BUCKET/$KEY"
-          
-          # Set environment variables for later steps
-          echo "VERSION_LABEL=$LABEL" >> $GITHUB_ENV          echo "S3_KEY=$KEY" >> $GITHUB_ENV
+            # Set environment variables for later steps
+          echo "VERSION_LABEL=$LABEL" >> $GITHUB_ENV
+          echo "S3_KEY=$KEY" >> $GITHUB_ENV
           
       - name: Create EB Application & Version
         run: |
@@ -199,7 +199,8 @@ jobs:
           
           aws elasticbeanstalk create-application-version \
             --application-name $APP \
-            --version-label $VERSION_LABEL \            --source-bundle S3Bucket=$S3_ARTIFACTS_BUCKET,S3Key=${S3_KEY} \
+            --version-label $VERSION_LABEL \
+            --source-bundle S3Bucket=$S3_ARTIFACTS_BUCKET,S3Key=$S3_KEY \
             --process
             
       - name: Set CloudFormation parameters
