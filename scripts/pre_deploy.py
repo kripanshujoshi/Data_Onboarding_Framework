@@ -94,7 +94,7 @@ def run_migrations(conn):
                 migration_dir = directory
                 print(f"Using migration directory: {migration_dir}")
                 break
-        
+                
         if migration_dir is None:
             raise FileNotFoundError("Could not find migrations directory")
             
