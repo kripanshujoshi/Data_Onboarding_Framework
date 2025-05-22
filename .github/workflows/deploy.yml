@@ -94,7 +94,6 @@ jobs:
           echo "Current directory: $(pwd)"
           echo "Looking for migrations directory:"
           ls -la
-          
           if [ -d "migrations" ]; then
             echo "Migrations directory found in current directory"
           else
@@ -127,8 +126,8 @@ jobs:
                         --application-name $APP \                        --environment-names $ENV_NAME \
                         --no-include-deleted \
                         | jq -r '.Environments[0].Status // empty')
-              
-              if [ -z "$STATUS" ] || [ "$STATUS" = "Terminated" ]; then
+
+                if [ -z "$STATUS" ] || [ "$STATUS" = "Terminated" ]; then
                 echo "Environment termination completed."
                 break
               fi
@@ -155,7 +154,8 @@ jobs:
           else
             BASE="metadataonboarding"  # Fallback default name
           fi
-            echo "Using base name: $BASE"
+
+          echo "Using base name: $BASE"
           echo "BASE_NAME=$BASE" >> $GITHUB_ENV
           
           # Ensure bucket names are in lowercase
@@ -175,7 +175,8 @@ jobs:
           CH=$(git rev-parse --short HEAD)
           LABEL="v${TS}-${CH}"
           KEY="app-${LABEL}.zip"
-            # Create zip archive excluding unnecessary files
+
+          # Create zip archive excluding unnecessary files
           echo "Creating application archive: $KEY"
           zip -r $KEY . -x ".git*" -x ".github/*" -x "infra/*" -x "tests/*" -x "Sample_Files/*"
           
