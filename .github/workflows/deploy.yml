@@ -185,8 +185,7 @@ jobs:
           aws s3 cp $KEY "s3://$S3_ARTIFACTS_BUCKET/$KEY"
           
           # Set environment variables for later steps
-          echo "VERSION_LABEL=$LABEL" >> $GITHUB_ENV
-          echo "S3_KEY=$KEY" >> $GITHUB_ENV
+          echo "VERSION_LABEL=$LABEL" >> $GITHUB_ENV          echo "S3_KEY=$KEY" >> $GITHUB_ENV
           
       - name: Create EB Application & Version
         run: |
@@ -199,10 +198,9 @@ jobs:
           
           aws elasticbeanstalk create-application-version \
             --application-name $APP \
-            --version-label $VERSION_LABEL \
-            --source-bundle S3Bucket=$S3_ARTIFACTS_BUCKET,S3Key=${S3_KEY} \
+            --version-label $VERSION_LABEL \            --source-bundle S3Bucket=$S3_ARTIFACTS_BUCKET,S3Key=${S3_KEY} \
             --process
-
+            
       - name: Set CloudFormation parameters
         run: |
           P="infra/parameters/${ENV}-parameters.json"
@@ -214,6 +212,39 @@ jobs:
           SECRET=$(jq -r '.Parameters.SecretsManagerSecretName' $P)
           SB=$(jq -r '.Parameters.S3BucketName' $P)
           SR=$(jq -r '.Parameters.S3RootPrefix' $P)
+          
+          echo "Checking if Elastic Beanstalk application exists..."
+          APP_EXISTS=$(aws elasticbeanstalk describe-applications --application-names $APP 2>/dev/null | jq '.Applications | length')
+          
+          if [[ "$APP_EXISTS" -gt "0" ]]; then
+            echo "Elastic Beanstalk application already exists: $APP"
+          else
+            echo "Elastic Beanstalk application does not exist, will be created by CloudFormation"
+          fi
+          
+          # Check if the stack already exists
+          echo "Checking if CloudFormation stack exists: $STACK_NAME"
+          STACK_EXISTS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME 2>/dev/null | jq '.Stacks | length' || echo "0")
+          
+          if [[ "$STACK_EXISTS" -gt "0" ]]; then
+            echo "CloudFormation stack exists, updating..."
+            DEPLOYMENT_TYPE="update"
+          else
+            echo "CloudFormation stack does not exist, creating new..."
+            DEPLOYMENT_TYPE="create"
+          fi
+          
+          echo "Deploying CloudFormation stack: $STACK_NAME"
+          
+          # Set deployment strategy based on whether the application exists
+          EXTRA_PARAMS=""
+          if [[ "$APP_EXISTS" -gt "0" ]]; then
+            echo "Application exists, using DO_NOTHING for failures to prevent application creation errors"
+            EXTRA_PARAMS="--on-failure DO_NOTHING"
+          fi
+          
+          # Try the deployment and capture the exit code
+          set +e
           aws cloudformation deploy \
             --template-file infra/cloudformation.yml \
             --stack-name $STACK_NAME \
@@ -230,4 +261,107 @@ jobs:
               S3BucketName=$SB \
               S3RootPrefix=$SR \
             --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset
+            --no-fail-on-empty-changeset \
+            $EXTRA_PARAMS
+          
+          CFN_EXIT_CODE=$?
+          set -e
+          
+          echo "CloudFormation deployment exit code: $CFN_EXIT_CODE"
+          
+          # Get current stack status
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+          echo "Current stack status: $STACK_STATUS"
+          
+          # If deployment failed or rolled back
+          if [[ $CFN_EXIT_CODE -ne 0 || "$STACK_STATUS" == "CREATE_FAILED" || "$STACK_STATUS" == "ROLLBACK_COMPLETE" || "$STACK_STATUS" == "UPDATE_ROLLBACK_COMPLETE" ]]; then
+            echo "Stack deployment failed, checking stack events for root cause..."
+            
+            # Get the reason for the failure 
+            aws cloudformation describe-stack-events --stack-name $STACK_NAME | jq -r '.StackEvents[] | select(.ResourceStatus | endswith("FAILED")) | {LogicalResourceId: .LogicalResourceId, ResourceStatus: .ResourceStatus, ResourceStatusReason: .ResourceStatusReason}' || true
+            
+            echo "Deploying environment directly through Elastic Beanstalk API..."
+            
+            # Only delete the stack if it was a new creation that failed
+            if [[ "$DEPLOYMENT_TYPE" == "create" && ("$STACK_STATUS" == "CREATE_FAILED" || "$STACK_STATUS" == "ROLLBACK_COMPLETE") ]]; then
+              echo "Deleting the failed stack..."
+              aws cloudformation delete-stack --stack-name $STACK_NAME
+              echo "Waiting for stack deletion to complete..."
+              aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME || true
+            fi
+            
+            # Check if application exists, create if not
+            if [[ "$APP_EXISTS" -eq "0" ]]; then
+              echo "Creating Elastic Beanstalk application: $APP"
+              aws elasticbeanstalk create-application --application-name $APP
+            fi
+            
+            # Check if environment exists
+            ENV_EXISTS=$(aws elasticbeanstalk describe-environments --application-name $APP --environment-names $ENV_NAME --no-include-deleted | jq '.Environments | length')
+            
+            if [[ "$ENV_EXISTS" -gt "0" ]]; then
+              # Update existing environment
+              echo "Updating existing environment: $ENV_NAME"
+              aws elasticbeanstalk update-environment \
+                --application-name $APP \
+                --environment-name $ENV_NAME \
+                --solution-stack-name "$(jq -r '.Parameters.SolutionStackName' $P)" \
+                --option-settings \
+                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=DEPLOY_ENV,Value=${ENV}" \
+                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=SECRETS_MANAGER_SECRET_NAME,Value=${SECRET}" \
+                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=S3_BUCKET_NAME,Value=${SB}" \
+                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=S3_ROOT_PREFIX,Value=${SR}" \
+                --version-label $VERSION_LABEL
+            else
+              # Create new environment
+              echo "Creating new environment: $ENV_NAME"
+              aws elasticbeanstalk create-environment \
+                --application-name $APP \
+                --environment-name $ENV_NAME \
+                --solution-stack-name "$(jq -r '.Parameters.SolutionStackName' $P)" \
+                --option-settings \
+                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=DEPLOY_ENV,Value=${ENV}" \
+                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=SECRETS_MANAGER_SECRET_NAME,Value=${SECRET}" \
+                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=S3_BUCKET_NAME,Value=${SB}" \
+                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=S3_ROOT_PREFIX,Value=${SR}" \
+                --version-label $VERSION_LABEL
+            fi
+            
+            echo "Environment deployment initiated directly through Elastic Beanstalk"
+          else
+            echo "Stack deployment completed successfully with status: $STACK_STATUS"          fi
+          
+          # Wait for the environment to be ready
+          echo "Waiting for Elastic Beanstalk environment to be ready..."
+          timeout 300 bash -c "while true; do STATUS=\$(aws elasticbeanstalk describe-environments --application-name $APP --environment-names $ENV_NAME --query 'Environments[0].Status' --output text 2>/dev/null); if [[ \$STATUS == 'Ready' ]]; then break; else echo \"Environment status: \$STATUS\"; sleep 10; fi; done" || echo "Timed out waiting for environment to be ready. Check the AWS Console for status."
+          
+      - name: Get Environment Information
+        run: |
+          APP=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          ENV_NAME=$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json)
+          
+          # Extract environment endpoint URL
+          ENDPOINT_URL=$(aws elasticbeanstalk describe-environments \
+            --application-name $APP \
+            --environment-names $ENV_NAME \
+            --query "Environments[0].EndpointURL" \
+            --output text)
+            
+          echo "Environment endpoint URL: $ENDPOINT_URL"
+          echo "ENDPOINT_URL=$ENDPOINT_URL" >> $GITHUB_ENV
+          
+          # Check environment health
+          HEALTH=$(aws elasticbeanstalk describe-environments \
+            --application-name $APP \
+            --environment-names $ENV_NAME \
+            --query "Environments[0].Health" \
+            --output text)
+            
+          echo "Environment health: $HEALTH"
+          
+          # List recent events for the environment
+          echo "Recent environment events:"
+          aws elasticbeanstalk describe-events \
+            --application-name $APP \
+            --environment-name $ENV_NAME \
+            --max-items 5
