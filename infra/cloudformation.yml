@@ -138,14 +138,22 @@ Resources:
     Properties:
       ApplicationName: !Ref ApplicationName
       Description: "Data Onboarding Framework Application"
+    # DeletionPolicy: Retain will ensure that existing applications don't get deleted when stack is deleted
+    DeletionPolicy: Retain
+    # UpdateReplacePolicy: Retain will ensure that if a change would replace the application, it keeps the existing one
+    UpdateReplacePolicy: Retain
   
   # Elastic Beanstalk environment
   ElasticBeanstalkEnvironment:
     Type: AWS::ElasticBeanstalk::Environment
+    DependsOn: ElasticBeanstalkApplication
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       EnvironmentName: !Ref EnvironmentName
       ApplicationName: !Ref ApplicationName
       SolutionStackName: !Ref SolutionStackName
+      CNAMEPrefix: !Join ['-', [!Ref ApplicationName, !Ref DeployEnvironment]]
       OptionSettings:
         # EC2 instance configuration
         - Namespace: aws:autoscaling:launchconfiguration
