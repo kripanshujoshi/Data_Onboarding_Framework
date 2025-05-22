@@ -93,8 +93,7 @@ jobs:
           # Debug - print current directory and look for migrations
           echo "Current directory: $(pwd)"
           echo "Looking for migrations directory:"
-          ls -la
-          if [ -d "migrations" ]; then
+          ls -la          if [ -d "migrations" ]; then
             echo "Migrations directory found in current directory"
           else
             echo "Migrations directory not found in current directory"
@@ -127,8 +126,8 @@ jobs:
                         --environment-names $ENV_NAME \
                         --no-include-deleted \
                         | jq -r '.Environments[0].Status // empty')
-              
-              if [ -z "$STATUS" ] || [ "$STATUS" = "Terminated" ]; then
+
+                if [ -z "$STATUS" ] || [ "$STATUS" = "Terminated" ]; then
                 echo "Environment termination completed."
                 break
               fi
@@ -139,33 +138,67 @@ jobs:
           else
             echo "Environment $ENV_NAME does not exist, skipping termination."
           fi
-
+          
       - name: Create S3 buckets
         run: |
           APP=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
-          BASE=$(echo $APP | sed 's/-dev$|-qa$|-prod$//')
-          aws s3 mb s3://${BASE}-eb-artifacts-${ENV} || true
-          aws s3 mb s3://${BASE}-cfn-artifacts-${ENV} || true
-
+          echo "Application name from parameters: $APP"
+          
+          # Fix the base name extraction by using a more reliable method
+          if [[ "$APP" == *-dev ]]; then
+            BASE=${APP%-dev}
+          elif [[ "$APP" == *-qa ]]; then
+            BASE=${APP%-qa}
+          elif [[ "$APP" == *-prod ]]; then
+            BASE=${APP%-prod}
+          else
+            BASE="metadataonboarding"  # Fallback default name
+          fi
+          
+          echo "Using base name: $BASE"
+          echo "BASE_NAME=$BASE" >> $GITHUB_ENV
+          
+          # Ensure bucket names are in lowercase          S3_BUCKET="${BASE,,}-eb-artifacts-${ENV,,}"
+          echo "Creating S3 bucket: $S3_BUCKET"
+          aws s3 mb "s3://$S3_BUCKET" || true
+          echo "S3_ARTIFACTS_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
+          
+          CFN_BUCKET="${BASE,,}-cfn-artifacts-${ENV,,}"
+          echo "Creating S3 bucket: $CFN_BUCKET"
+          aws s3 mb "s3://$CFN_BUCKET" || true
+          echo "S3_CFN_BUCKET=$CFN_BUCKET" >> $GITHUB_ENV
+          
       - name: Archive and Upload Application
         run: |
           TS=$(date +%Y%m%d%H%M%S)
           CH=$(git rev-parse --short HEAD)
           LABEL="v${TS}-${CH}"
           KEY="app-${LABEL}.zip"
+          
+          # Create zip archive excluding unnecessary files
+          echo "Creating application archive: $KEY"
           zip -r $KEY . -x ".git*" -x ".github/*" -x "infra/*" -x "tests/*" -x "Sample_Files/*"
-          aws s3 cp $KEY s3://${BASE}-eb-artifacts-${ENV}/$KEY
+            # Use the environment variable set in the previous step
+          echo "Uploading to S3 bucket: $S3_ARTIFACTS_BUCKET"
+          aws s3 cp $KEY "s3://$S3_ARTIFACTS_BUCKET/$KEY"
+          
+          # Set environment variables for later steps
           echo "VERSION_LABEL=$LABEL" >> $GITHUB_ENV
           echo "S3_KEY=$KEY" >> $GITHUB_ENV
-
+          
       - name: Create EB Application & Version
         run: |
           APP=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
+          echo "Creating Elastic Beanstalk application: $APP"
           aws elasticbeanstalk create-application --application-name $APP || true
+          
+          echo "Creating application version: $VERSION_LABEL"
+          echo "Using S3 bucket: $S3_ARTIFACTS_BUCKET"
+          
           aws elasticbeanstalk create-application-version \
             --application-name $APP \
             --version-label $VERSION_LABEL \
-            --source-bundle S3Bucket=${BASE}-eb-artifacts-${ENV},S3Key=${S3_KEY} \
+            --source-bundle S3Bucket=$S3_ARTIFACTS_BUCKET,S3Key=${S3_KEY} \
             --process
 
       - name: Set CloudFormation parameters
