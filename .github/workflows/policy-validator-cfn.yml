@@ -12,10 +12,10 @@
 name: Validate AWS IAM policies in CloudFormation templates using Policy Validator
 on:
   push:
-    branches: ["feature", "dev", "qa1", "main1" ]
+    branches: ["feature1", "dev1", "qa1", "main1" ]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: ["dev", "qa1", "main1"]
+    branches: ["dev1", "qa1", "main1"]
 env:
   REGION: us-east-1 # Setting AWS region to match deploy workflow
   TEMPLATE_PATH: infra/cloudformation.yml # Path to your CloudFormation template

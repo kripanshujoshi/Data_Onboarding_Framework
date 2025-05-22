@@ -55,18 +55,48 @@ def run_migrations(conn):
     """Run database migrations"""
     cursor = conn.cursor()
     
-    try:
-        # Try different paths for GitHub Actions compatibility
-        possible_dirs = ['../migrations', 'migrations']
-        migration_dir = None
+    try:        # Try different paths for GitHub Actions compatibility
+        # Consider absolute paths based on script location and project root
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(script_dir, '..'))
+        current_dir = os.getcwd()
         
+        # Print all directory information for debugging
+        print(f"Script directory: {script_dir}")
+        print(f"Project root: {project_root}")
+        print(f"Current working directory: {current_dir}")
+        
+        # Check all possible directories where migrations might be located
+        possible_dirs = [
+            '../migrations',                               # When running from scripts dir
+            'migrations',                                  # When running from project root
+            os.path.join(project_root, 'migrations'),      # Absolute path to migrations
+            os.path.join(script_dir, '../migrations'),     # Absolute path from scripts dir
+            './migrations',                                # Current directory + migrations
+            os.path.join(current_dir, 'migrations')        # Absolute path from current dir
+        ]
+        
+        print(f"Looking for migrations in these directories: {possible_dirs}")
+        
+        # Debug - list contents of each possible directory
+        for directory in possible_dirs:
+            if os.path.exists(directory):
+                print(f"Directory {directory} exists with contents:")
+                try:
+                    print(os.listdir(directory))
+                except Exception as e:
+                    print(f"Error listing directory {directory}: {e}")
+            else:
+                print(f"Directory {directory} does not exist")
+        migration_dir = None
         for directory in possible_dirs:
             if os.path.exists(directory):
                 migration_dir = directory
                 print(f"Using migration directory: {migration_dir}")
                 break
-            if migration_dir is None:
-               raise FileNotFoundError("Could not find migrations directory")
+                
+        if migration_dir is None:
+            raise FileNotFoundError("Could not find migrations directory")
             
         migration_files = [f for f in os.listdir(migration_dir) if f.endswith('.sql')]
         migration_files.sort()  # Sort to ensure order
