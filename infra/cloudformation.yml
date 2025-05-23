@@ -150,10 +150,6 @@ Resources:
     Properties:
       ApplicationName: !Ref ApplicationName
       Description: "Data Onboarding Framework Application"
-    # DeletionPolicy: Retain will ensure that existing applications don't get deleted when stack is deleted
-    DeletionPolicy: Retain
-    # UpdateReplacePolicy: Retain will ensure that if a change would replace the application, it keeps the existing one
-    UpdateReplacePolicy: Retain
   
   # Elastic Beanstalk application version based on S3 bundle and VersionLabel
   ElasticBeanstalkAppVersion:
