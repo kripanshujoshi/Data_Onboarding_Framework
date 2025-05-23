@@ -52,10 +52,6 @@ Parameters:
   ApplicationVersionS3Key:
     Type: String
     Description: S3 key for application version source bundle
-  
-  VersionLabel:
-    Type: String
-    Description: Version label for the Elastic Beanstalk application version
 
 Resources:
   # Create the S3 bucket for SQL scripts
@@ -166,12 +162,10 @@ Resources:
   ElasticBeanstalkEnvironment:
     Type: AWS::ElasticBeanstalk::Environment
     DependsOn: ElasticBeanstalkApplication
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
     Properties:
       EnvironmentName: !Ref EnvironmentName
       ApplicationName: !Ref ApplicationName
-      VersionLabel: !Ref VersionLabel
+      VersionLabel: !GetAtt ElasticBeanstalkAppVersion.VersionLabel
       SolutionStackName: !Ref SolutionStackName
       CNAMEPrefix: !Join ['-', [!Ref ApplicationName, !Ref DeployEnvironment]]
       OptionSettings:
