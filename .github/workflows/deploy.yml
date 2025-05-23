@@ -208,7 +208,7 @@ jobs:
               S3BucketName=$(jq -r '.Parameters.S3BucketName' infra/parameters/${ENV}-parameters.json) \
               S3RootPrefix=$(jq -r '.Parameters.S3RootPrefix' infra/parameters/${ENV}-parameters.json) \
             --capabilities CAPABILITY_NAMED_IAM
-
+            
       - name: Get Environment Information
         run: |
           APP=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
