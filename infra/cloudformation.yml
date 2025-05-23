@@ -44,6 +44,18 @@ Parameters:
     Type: String
     Default: onboarding_requests
     Description: Root prefix for SQL scripts in S3
+  
+  ApplicationVersionS3Bucket:
+    Type: String
+    Description: S3 bucket for application version source bundle
+  
+  ApplicationVersionS3Key:
+    Type: String
+    Description: S3 key for application version source bundle
+  
+  VersionLabel:
+    Type: String
+    Description: Version label for the Elastic Beanstalk application version
 
 Resources:
   # Create the S3 bucket for SQL scripts
@@ -143,6 +155,17 @@ Resources:
     # UpdateReplacePolicy: Retain will ensure that if a change would replace the application, it keeps the existing one
     UpdateReplacePolicy: Retain
   
+  # Elastic Beanstalk application version based on S3 bundle and VersionLabel
+  ElasticBeanstalkAppVersion:
+    Type: AWS::ElasticBeanstalk::ApplicationVersion
+    DependsOn: ElasticBeanstalkApplication
+    Properties:
+      ApplicationName: !Ref ApplicationName
+      VersionLabel: !Ref VersionLabel
+      SourceBundle:
+        S3Bucket: !Ref ApplicationVersionS3Bucket
+        S3Key: !Ref ApplicationVersionS3Key
+  
   # Elastic Beanstalk environment
   ElasticBeanstalkEnvironment:
     Type: AWS::ElasticBeanstalk::Environment
@@ -152,6 +175,7 @@ Resources:
     Properties:
       EnvironmentName: !Ref EnvironmentName
       ApplicationName: !Ref ApplicationName
+      VersionLabel: !Ref VersionLabel
       SolutionStackName: !Ref SolutionStackName
       CNAMEPrefix: !Join ['-', [!Ref ApplicationName, !Ref DeployEnvironment]]
       OptionSettings:
