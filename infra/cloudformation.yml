@@ -126,7 +126,7 @@ Resources:
               - secretsmanager:PutSecretValue
               - secretsmanager:UpdateSecret
             Resource:
-              - !GetAtt UserAuthSecret.ARN
+              - !Ref UserAuthSecret
           # Allow access to the RDS secret (already defined in config)
           - Effect: Allow
             Action:
