@@ -157,6 +157,7 @@ Resources:
     DependsOn: ElasticBeanstalkApplication
     Properties:
       ApplicationName: !Ref ApplicationName
+      VersionLabel: !Ref VersionLabel
       SourceBundle:
         S3Bucket: !Ref ApplicationVersionS3Bucket
         S3Key: !Ref ApplicationVersionS3Key
@@ -174,6 +175,11 @@ Resources:
       SolutionStackName: !Ref SolutionStackName
       CNAMEPrefix: !Join ['-', [!Ref ApplicationName, !Ref DeployEnvironment]]
       OptionSettings:
+        # Load Balancer type
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: LoadBalancerType
+          Value: application
+
         # EC2 instance configuration
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: InstanceType
