@@ -161,7 +161,7 @@ Resources:
   # Elastic Beanstalk environment
   ElasticBeanstalkEnvironment:
     Type: AWS::ElasticBeanstalk::Environment
-    DependsOn: ElasticBeanstalkApplication
+    DependsOn: [ElasticBeanstalkApplication, ElasticBeanstalkAppVersion]
     Properties:
       EnvironmentName: !Ref EnvironmentName
       ApplicationName: !Ref ApplicationName
@@ -173,32 +173,29 @@ Resources:
         - Namespace: aws:elasticbeanstalk:environment
           OptionName: LoadBalancerType
           Value: application
-
         # EC2 instance configuration
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: InstanceType
           Value: !Ref InstanceType
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: IamInstanceProfile
-          Value: !GetAtt AppInstanceProfile.Arn
+          Value: !Ref AppInstanceProfile
         - Namespace: aws:autoscaling:launchconfiguration
           OptionName: EC2KeyName
-          Value: !Ref KeyName
-        
+          Value: !Ref KeyName        
         # Environment variables - Add these settings
         - Namespace: aws:elasticbeanstalk:application:environment
           OptionName: DEPLOY_ENV
           Value: !Ref DeployEnvironment
         - Namespace: aws:elasticbeanstalk:application:environment
           OptionName: SECRETS_MANAGER_SECRET_NAME
-          Value: !Ref SecretsManagerSecretName
+          Value: !Ref UserAuthSecret
         - Namespace: aws:elasticbeanstalk:application:environment
           OptionName: S3_BUCKET_NAME
           Value: !Ref S3BucketName
         - Namespace: aws:elasticbeanstalk:application:environment
           OptionName: S3_ROOT_PREFIX
           Value: !Ref S3RootPrefix
-        
         # Application deployment settings
         - Namespace: aws:elasticbeanstalk:command
           OptionName: DeploymentPolicy
@@ -209,7 +206,6 @@ Resources:
         - Namespace: aws:elasticbeanstalk:command
           OptionName: BatchSizeType
           Value: Percentage
-        
         # Auto scaling
         - Namespace: aws:autoscaling:asg
           OptionName: MinSize
@@ -222,11 +218,11 @@ Outputs:
   EnvironmentURL:
     Description: URL of the Elastic Beanstalk environment
     Value: !GetAtt ElasticBeanstalkEnvironment.EndpointURL
-  
+
   S3BucketName:
     Description: Name of the S3 bucket created for SQL script storage
     Value: !Ref S3BucketName
-  
+
   SecretsManagerSecretName:
     Description: Name of the Secrets Manager secret for user authentication
     Value: !Ref SecretsManagerSecretName
