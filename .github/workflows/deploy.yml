@@ -333,6 +333,8 @@ jobs:
             echo "Verifying instance profile exists..."
             aws iam get-instance-profile --instance-profile-name $PROFILE_NAME
             
+            # CloudFormation manages IAM roles and instance profiles
+            
             # Check if environment exists
             ENV_EXISTS=$(aws elasticbeanstalk describe-environments --application-name $APP --environment-names $ENV_NAME --no-include-deleted | jq '.Environments | length')
             

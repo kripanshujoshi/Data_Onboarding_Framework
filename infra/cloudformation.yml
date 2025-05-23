@@ -161,7 +161,6 @@ Resources:
     DependsOn: ElasticBeanstalkApplication
     Properties:
       ApplicationName: !Ref ApplicationName
-      VersionLabel: !Ref VersionLabel
       SourceBundle:
         S3Bucket: !Ref ApplicationVersionS3Bucket
         S3Key: !Ref ApplicationVersionS3Key
