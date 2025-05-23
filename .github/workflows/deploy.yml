@@ -282,6 +282,12 @@ jobs:
             if [[ "$APP_EXISTS" -eq "0" ]]; then
               echo "Creating Elastic Beanstalk application: $APP"
               aws elasticbeanstalk create-application --application-name $APP
+              echo "Creating Elastic Beanstalk application version: $VERSION_LABEL"
+              aws elasticbeanstalk create-application-version \
+                --application-name $APP \
+                --version-label $VERSION_LABEL \
+                --source-bundle S3Bucket=${S3_ARTIFACTS_BUCKET},S3Key=${S3_KEY} \
+                --auto-create-application
             fi
               # Create or ensure IAM role and instance profile for EB
             ROLE_NAME="${APP}-eb-ec2-role"
