@@ -99,7 +99,8 @@ jobs:
           else
             echo "Migrations directory not found in current directory"
           fi
-            # Run with proper working directory to ensure migrations can be found
+          
+          # Run with proper working directory to ensure migrations can be found
           python scripts/pre_deploy.py --env ${ENV}
           
       - name: Clean up existing EB env
@@ -123,11 +124,12 @@ jobs:
             echo "Waiting for environment termination..."
             while true; do
               STATUS=$(aws elasticbeanstalk describe-environments \
-                        --application-name $APP \                        --environment-names $ENV_NAME \
+                        --application-name $APP \
+                        --environment-names $ENV_NAME \
                         --no-include-deleted \
                         | jq -r '.Environments[0].Status // empty')
 
-                if [ -z "$STATUS" ] || [ "$STATUS" = "Terminated" ]; then
+              if [ -z "$STATUS" ] || [ "$STATUS" = "Terminated" ]; then
                 echo "Environment termination completed."
                 break
               fi
@@ -238,13 +240,6 @@ jobs:
           
           echo "Deploying CloudFormation stack: $STACK_NAME"
           
-          # Set deployment strategy based on whether the application exists
-          EXTRA_PARAMS=""
-          if [[ "$APP_EXISTS" -gt "0" ]]; then
-            echo "Application exists, using DO_NOTHING for failures to prevent application creation errors"
-            EXTRA_PARAMS="--on-failure DO_NOTHING"
-          fi
-          
           # Try the deployment and capture the exit code
           set +e
           aws cloudformation deploy \
@@ -263,14 +258,12 @@ jobs:
               S3BucketName=$SB \
               S3RootPrefix=$SR \
             --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset \
-            $EXTRA_PARAMS
+            --no-fail-on-empty-changeset
           
           CFN_EXIT_CODE=$?
           set -e
           
           echo "CloudFormation deployment exit code: $CFN_EXIT_CODE"
-          
           # Get current stack status
           STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "DOES_NOT_EXIST")
           echo "Current stack status: $STACK_STATUS"
@@ -284,8 +277,14 @@ jobs:
             
             echo "Deploying environment directly through Elastic Beanstalk API..."
             
-            # Only delete the stack if it was a new creation that failed
-            if [[ "$DEPLOYMENT_TYPE" == "create" && ("$STACK_STATUS" == "CREATE_FAILED" || "$STACK_STATUS" == "ROLLBACK_COMPLETE") ]]; then
+            # Handle stack in ROLLBACK_COMPLETE or failed state
+            if [[ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]]; then
+              echo "Stack is in ROLLBACK_COMPLETE state, deleting to allow fresh deployment..."
+              aws cloudformation delete-stack --stack-name $STACK_NAME
+              echo "Waiting for stack deletion to complete..."
+              aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME || true
+              echo "Stack deletion complete or timed out, proceeding with direct EB deployment"
+            elif [[ "$DEPLOYMENT_TYPE" == "create" && "$STACK_STATUS" == "CREATE_FAILED" ]]; then
               echo "Deleting the failed stack..."
               aws cloudformation delete-stack --stack-name $STACK_NAME
               echo "Waiting for stack deletion to complete..."
@@ -331,7 +330,8 @@ jobs:
             
             echo "Environment deployment initiated directly through Elastic Beanstalk"
           else
-            echo "Stack deployment completed successfully with status: $STACK_STATUS"          fi
+            echo "Stack deployment completed successfully with status: $STACK_STATUS"
+          fi
           
           # Wait for the environment to be ready
           echo "Waiting for Elastic Beanstalk environment to be ready..."
