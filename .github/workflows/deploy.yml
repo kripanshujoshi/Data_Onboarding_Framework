@@ -196,17 +196,17 @@ jobs:
             --template-file infra/cloudformation.yml \
             --stack-name $STACK_NAME \
             --parameter-overrides \
-              ApplicationName=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json) \
-              EnvironmentName=$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json) \
-              InstanceType=$(jq -r '.Parameters.InstanceType' infra/parameters/${ENV}-parameters.json) \
-              KeyName=$(jq -r '.Parameters.KeyName' infra/parameters/${ENV}-parameters.json) \
-              DeployEnvironment=${ENV} \
-              SolutionStackName=$(jq -r '.Parameters.SolutionStackName' infra/parameters/${ENV}-parameters.json) \
-              ApplicationVersionS3Bucket=${S3_ARTIFACTS_BUCKET} \
-              ApplicationVersionS3Key=${S3_KEY} \
-              SecretsManagerSecretName=$(jq -r '.Parameters.SecretsManagerSecretName' infra/parameters/${ENV}-parameters.json) \
-              S3BucketName=$(jq -r '.Parameters.S3BucketName' infra/parameters/${ENV}-parameters.json) \
-              S3RootPrefix=$(jq -r '.Parameters.S3RootPrefix' infra/parameters/${ENV}-parameters.json) \
+              ApplicationName="$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)" \
+              EnvironmentName="$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json)" \
+              InstanceType="$(jq -r '.Parameters.InstanceType' infra/parameters/${ENV}-parameters.json)" \
+              KeyName="$(jq -r '.Parameters.KeyName' infra/parameters/${ENV}-parameters.json)" \
+              DeployEnvironment="${ENV}" \
+              SolutionStackName="$(jq -r '.Parameters.SolutionStackName' infra/parameters/${ENV}-parameters.json)" \
+              ApplicationVersionS3Bucket="${S3_ARTIFACTS_BUCKET}" \
+              ApplicationVersionS3Key="${S3_KEY}" \
+              SecretsManagerSecretName="$(jq -r '.Parameters.SecretsManagerSecretName' infra/parameters/${ENV}-parameters.json)" \
+              S3BucketName="$(jq -r '.Parameters.S3BucketName' infra/parameters/${ENV}-parameters.json)" \
+              S3RootPrefix="$(jq -r '.Parameters.S3RootPrefix' infra/parameters/${ENV}-parameters.json)" \
             --capabilities CAPABILITY_NAMED_IAM
             
       - name: Get Environment Information
