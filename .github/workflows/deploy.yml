@@ -189,200 +189,26 @@ jobs:
           # Set environment variables for later steps
           echo "VERSION_LABEL=$LABEL" >> $GITHUB_ENV
           echo "S3_KEY=$KEY" >> $GITHUB_ENV
-          
-      - name: Set CloudFormation parameters
+
+      - name: Deploy CloudFormation Stack
         run: |
-          P="infra/parameters/${ENV}-parameters.json"
-          APP=$(jq -r '.Parameters.ApplicationName' $P)
-          ENV_NAME=$(jq -r '.Parameters.EnvironmentName' $P)
-          INSTANCE=$(jq -r '.Parameters.InstanceType' $P)
-          KEYN=$(jq -r '.Parameters.KeyName' $P)
-          STACK_NAME=${STACK_NAME}
-          SECRET=$(jq -r '.Parameters.SecretsManagerSecretName' $P)
-          SB=$(jq -r '.Parameters.S3BucketName' $P)
-          SR=$(jq -r '.Parameters.S3RootPrefix' $P)
-          
-          echo "Checking if Elastic Beanstalk application exists..."
-          APP_EXISTS=$(aws elasticbeanstalk describe-applications --application-names $APP 2>/dev/null | jq '.Applications | length')
-          
-          if [[ "$APP_EXISTS" -gt "0" ]]; then
-            echo "Elastic Beanstalk application already exists: $APP"
-          else
-            echo "Elastic Beanstalk application does not exist, will be created by CloudFormation"
-          fi
-          
-          # Check if the stack already exists
-          echo "Checking if CloudFormation stack exists: $STACK_NAME"
-          STACK_EXISTS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME 2>/dev/null | jq '.Stacks | length' || echo "0")
-          
-          if [[ "$STACK_EXISTS" -gt "0" ]]; then
-            echo "CloudFormation stack exists, updating..."
-            DEPLOYMENT_TYPE="update"
-          else
-            echo "CloudFormation stack does not exist, creating new..."
-            DEPLOYMENT_TYPE="create"
-          fi
-          
-          echo "Deploying CloudFormation stack: $STACK_NAME"
-          
-          # Try the deployment and capture the exit code
-          set +e
           aws cloudformation deploy \
             --template-file infra/cloudformation.yml \
             --stack-name $STACK_NAME \
             --parameter-overrides \
-              ApplicationName=$APP \
-              EnvironmentName=$ENV_NAME \
-              InstanceType=$INSTANCE \
-              KeyName=$KEYN \
-              DeployEnvironment=$ENV \
-              SolutionStackName="$(jq -r '.Parameters.SolutionStackName' $P)" \
-              SourceBundleKey=$S3_KEY \
-              VersionLabel=$VERSION_LABEL \
+              ApplicationName=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json) \
+              EnvironmentName=$(jq -r '.Parameters.EnvironmentName' infra/parameters/${ENV}-parameters.json) \
+              InstanceType=$(jq -r '.Parameters.InstanceType' infra/parameters/${ENV}-parameters.json) \
+              KeyName=$(jq -r '.Parameters.KeyName' infra/parameters/${ENV}-parameters.json) \
+              DeployEnvironment=${ENV} \
+              SolutionStackName=$(jq -r '.Parameters.SolutionStackName' infra/parameters/${ENV}-parameters.json) \
               ApplicationVersionS3Bucket=${S3_ARTIFACTS_BUCKET} \
               ApplicationVersionS3Key=${S3_KEY} \
-              SecretsManagerSecretName=$SECRET \
-              S3BucketName=$SB \
-              S3RootPrefix=$SR \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset
-          
-          CFN_EXIT_CODE=$?
-          set -e
-          
-          echo "CloudFormation deployment exit code: $CFN_EXIT_CODE"
-          # Get current stack status
-          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "DOES_NOT_EXIST")
-          echo "Current stack status: $STACK_STATUS"
-          
-          # If deployment failed or rolled back
-          if [[ $CFN_EXIT_CODE -ne 0 || "$STACK_STATUS" == "CREATE_FAILED" || "$STACK_STATUS" == "ROLLBACK_COMPLETE" || "$STACK_STATUS" == "UPDATE_ROLLBACK_COMPLETE" ]]; then
-            echo "Stack deployment failed, checking stack events for root cause..."
-            
-            # Get the reason for the failure 
-            aws cloudformation describe-stack-events --stack-name $STACK_NAME | jq -r '.StackEvents[] | select(.ResourceStatus | endswith("FAILED")) | {LogicalResourceId: .LogicalResourceId, ResourceStatus: .ResourceStatus, ResourceStatusReason: .ResourceStatusReason}' || true
-            
-            echo "Deploying environment directly through Elastic Beanstalk API..."
-            
-            # Handle stack in ROLLBACK_COMPLETE or failed state
-            if [[ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]]; then
-              echo "Stack is in ROLLBACK_COMPLETE state, deleting to allow fresh deployment..."
-              aws cloudformation delete-stack --stack-name $STACK_NAME
-              echo "Waiting for stack deletion to complete..."
-              aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME || true
-              echo "Stack deletion complete or timed out, proceeding with direct EB deployment"
-            elif [[ "$DEPLOYMENT_TYPE" == "create" && "$STACK_STATUS" == "CREATE_FAILED" ]]; then
-              echo "Deleting the failed stack..."
-              aws cloudformation delete-stack --stack-name $STACK_NAME
-              echo "Waiting for stack deletion to complete..."
-              aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME || true
-            fi
-            
-            # Check if application exists, create if not
-            if [[ "$APP_EXISTS" -eq "0" ]]; then
-              echo "Creating Elastic Beanstalk application: $APP"
-              aws elasticbeanstalk create-application --application-name $APP
-              echo "Creating Elastic Beanstalk application version: $VERSION_LABEL"
-              aws elasticbeanstalk create-application-version \
-                --application-name $APP \
-                --version-label $VERSION_LABEL \
-                --source-bundle S3Bucket=${S3_ARTIFACTS_BUCKET},S3Key=${S3_KEY} \
-                --auto-create-application
-            fi
-              # Create or ensure IAM role and instance profile for EB
-            ROLE_NAME="${APP}-eb-ec2-role"
-            PROFILE_NAME="${APP}-eb-ec2-profile"
-            
-            echo "Setting up IAM role and instance profile for Elastic Beanstalk..."
-              # Create trust policy document for EC2
-            TRUST_POLICY='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
-            
-            # Check if role exists, create if not
-            ROLE_EXISTS=$(aws iam get-role --role-name $ROLE_NAME 2>/dev/null && echo "true" || echo "false")
-            
-            if [[ "$ROLE_EXISTS" == "false" ]]; then
-              echo "Creating IAM role: $ROLE_NAME"
-              aws iam create-role --role-name $ROLE_NAME --assume-role-policy-document "$TRUST_POLICY"
-              
-              # Attach necessary policies
-              echo "Attaching policies to IAM role"
-              aws iam attach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
-              aws iam attach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker
-              aws iam attach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
-              
-              # Add custom permissions for S3 and Secrets Manager
-              CUSTOM_POLICY='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],"Resource":["arn:aws:s3:::${SB}","arn:aws:s3:::${SB}/*"]},{"Effect":"Allow","Action":["secretsmanager:GetSecretValue","secretsmanager:PutSecretValue","secretsmanager:UpdateSecret"],"Resource":"*"}]}'
-              aws iam put-role-policy --role-name $ROLE_NAME --policy-name "${APP}-custom-permissions" --policy-document "$CUSTOM_POLICY"
-            else
-              echo "IAM role $ROLE_NAME already exists, using existing role"
-            fi
-            
-            # Check if instance profile exists, create if not
-            PROFILE_EXISTS=$(aws iam get-instance-profile --instance-profile-name $PROFILE_NAME 2>/dev/null && echo "true" || echo "false")
-            
-            if [[ "$PROFILE_EXISTS" == "false" ]]; then
-              echo "Creating instance profile: $PROFILE_NAME"
-              aws iam create-instance-profile --instance-profile-name $PROFILE_NAME
-              
-              # Add role to instance profile
-              echo "Adding role to instance profile"
-              aws iam add-role-to-instance-profile --role-name $ROLE_NAME --instance-profile-name $PROFILE_NAME
-            else
-              echo "Instance profile $PROFILE_NAME already exists, using existing profile"
-            fi
-              # Give AWS time to propagate the instance profile
-            echo "Waiting for instance profile to be ready..."
-            # IAM propagation can take up to 30 seconds or more
-            sleep 30
-            
-            # Verify the instance profile exists
-            echo "Verifying instance profile exists..."
-            aws iam get-instance-profile --instance-profile-name $PROFILE_NAME
-            
-            # CloudFormation manages IAM roles and instance profiles
-            
-            # Check if environment exists
-            ENV_EXISTS=$(aws elasticbeanstalk describe-environments --application-name $APP --environment-names $ENV_NAME --no-include-deleted | jq '.Environments | length')
-            
-            if [[ "$ENV_EXISTS" -gt "0" ]]; then
-              # Update existing environment
-              echo "Updating existing environment: $ENV_NAME"
-              aws elasticbeanstalk update-environment \
-                --application-name $APP \
-                --environment-name $ENV_NAME \
-                --solution-stack-name "$(jq -r '.Parameters.SolutionStackName' $P)" \
-                --option-settings \
-                  "Namespace=aws:autoscaling:launchconfiguration,OptionName=IamInstanceProfile,Value=${PROFILE_NAME}" \
-                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=DEPLOY_ENV,Value=${ENV}" \
-                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=SECRETS_MANAGER_SECRET_NAME,Value=${SECRET}" \
-                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=S3_BUCKET_NAME,Value=${SB}" \
-                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=S3_ROOT_PREFIX,Value=${SR}" \
-                --version-label $VERSION_LABEL
-            else
-              # Create new environment
-              echo "Creating new environment: $ENV_NAME with instance profile: $PROFILE_NAME"
-              aws elasticbeanstalk create-environment \
-                --application-name $APP \
-                --environment-name $ENV_NAME \
-                --solution-stack-name "$(jq -r '.Parameters.SolutionStackName' $P)" \
-                --option-settings \
-                  "Namespace=aws:autoscaling:launchconfiguration,OptionName=IamInstanceProfile,Value=${PROFILE_NAME}" \
-                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=DEPLOY_ENV,Value=${ENV}" \
-                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=SECRETS_MANAGER_SECRET_NAME,Value=${SECRET}" \
-                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=S3_BUCKET_NAME,Value=${SB}" \
-                  "Namespace=aws:elasticbeanstalk:application:environment,OptionName=S3_ROOT_PREFIX,Value=${SR}" \
-                --version-label $VERSION_LABEL
-            fi
-            
-            echo "Environment deployment initiated directly through Elastic Beanstalk"
-          else
-            echo "Stack deployment completed successfully with status: $STACK_STATUS"
-          fi
-          
-          # Wait for the environment to be ready
-          echo "Waiting for Elastic Beanstalk environment to be ready..."
-          timeout 300 bash -c "while true; do STATUS=\$(aws elasticbeanstalk describe-environments --application-name $APP --environment-names $ENV_NAME --query 'Environments[0].Status' --output text 2>/dev/null); if [[ \$STATUS == 'Ready' ]]; then break; else echo \"Environment status: \$STATUS\"; sleep 10; fi; done" || echo "Timed out waiting for environment to be ready. Check the AWS Console for status."
-          
+              SecretsManagerSecretName=$(jq -r '.Parameters.SecretsManagerSecretName' infra/parameters/${ENV}-parameters.json) \
+              S3BucketName=$(jq -r '.Parameters.S3BucketName' infra/parameters/${ENV}-parameters.json) \
+              S3RootPrefix=$(jq -r '.Parameters.S3RootPrefix' infra/parameters/${ENV}-parameters.json) \
+            --capabilities CAPABILITY_NAMED_IAM
+
       - name: Get Environment Information
         run: |
           APP=$(jq -r '.Parameters.ApplicationName' infra/parameters/${ENV}-parameters.json)
