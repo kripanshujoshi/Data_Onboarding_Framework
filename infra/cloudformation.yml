@@ -147,13 +147,12 @@ Resources:
       ApplicationName: !Ref ApplicationName
       Description: "Data Onboarding Framework Application"
   
-  # Elastic Beanstalk application version based on S3 bundle and VersionLabel
+  # Elastic Beanstalk application version based on S3 bundle
   ElasticBeanstalkAppVersion:
     Type: AWS::ElasticBeanstalk::ApplicationVersion
     DependsOn: ElasticBeanstalkApplication
     Properties:
       ApplicationName: !Ref ApplicationName
-      VersionLabel: !Ref ApplicationVersionS3Key
       SourceBundle:
         S3Bucket: !Ref ApplicationVersionS3Bucket
         S3Key: !Ref ApplicationVersionS3Key
