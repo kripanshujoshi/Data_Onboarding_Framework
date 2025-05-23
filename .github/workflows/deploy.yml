@@ -283,6 +283,55 @@ jobs:
               echo "Creating Elastic Beanstalk application: $APP"
               aws elasticbeanstalk create-application --application-name $APP
             fi
+              # Create or ensure IAM role and instance profile for EB
+            ROLE_NAME="${APP}-eb-ec2-role"
+            PROFILE_NAME="${APP}-eb-ec2-profile"
+            
+            echo "Setting up IAM role and instance profile for Elastic Beanstalk..."
+              # Create trust policy document for EC2
+            TRUST_POLICY='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
+            
+            # Check if role exists, create if not
+            ROLE_EXISTS=$(aws iam get-role --role-name $ROLE_NAME 2>/dev/null && echo "true" || echo "false")
+            
+            if [[ "$ROLE_EXISTS" == "false" ]]; then
+              echo "Creating IAM role: $ROLE_NAME"
+              aws iam create-role --role-name $ROLE_NAME --assume-role-policy-document "$TRUST_POLICY"
+              
+              # Attach necessary policies
+              echo "Attaching policies to IAM role"
+              aws iam attach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+              aws iam attach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker
+              aws iam attach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
+              
+              # Add custom permissions for S3 and Secrets Manager
+              CUSTOM_POLICY='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],"Resource":["arn:aws:s3:::${SB}","arn:aws:s3:::${SB}/*"]},{"Effect":"Allow","Action":["secretsmanager:GetSecretValue","secretsmanager:PutSecretValue","secretsmanager:UpdateSecret"],"Resource":"*"}]}'
+              aws iam put-role-policy --role-name $ROLE_NAME --policy-name "${APP}-custom-permissions" --policy-document "$CUSTOM_POLICY"
+            else
+              echo "IAM role $ROLE_NAME already exists, using existing role"
+            fi
+            
+            # Check if instance profile exists, create if not
+            PROFILE_EXISTS=$(aws iam get-instance-profile --instance-profile-name $PROFILE_NAME 2>/dev/null && echo "true" || echo "false")
+            
+            if [[ "$PROFILE_EXISTS" == "false" ]]; then
+              echo "Creating instance profile: $PROFILE_NAME"
+              aws iam create-instance-profile --instance-profile-name $PROFILE_NAME
+              
+              # Add role to instance profile
+              echo "Adding role to instance profile"
+              aws iam add-role-to-instance-profile --role-name $ROLE_NAME --instance-profile-name $PROFILE_NAME
+            else
+              echo "Instance profile $PROFILE_NAME already exists, using existing profile"
+            fi
+              # Give AWS time to propagate the instance profile
+            echo "Waiting for instance profile to be ready..."
+            # IAM propagation can take up to 30 seconds or more
+            sleep 30
+            
+            # Verify the instance profile exists
+            echo "Verifying instance profile exists..."
+            aws iam get-instance-profile --instance-profile-name $PROFILE_NAME
             
             # CloudFormation manages IAM roles and instance profiles
             
